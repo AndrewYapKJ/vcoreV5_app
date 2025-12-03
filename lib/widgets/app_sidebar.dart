@@ -42,27 +42,27 @@ class AppSidebar extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.home),
             title: Text('dashboard'.tr()),
-            onTap: () => context.go('/home'),
+            onTap: () => context.push('/dashboard'),
           ),
           ListTile(
             leading: const Icon(Icons.card_giftcard),
             title: Text('incentive_report'.tr()),
-            onTap: () => context.go('/incentive'),
+            onTap: () => context.push('/incentive'),
           ),
           ListTile(
             leading: const Icon(Icons.list_alt),
             title: Text('job_list'.tr()),
-            onTap: () => context.go('/jobs'),
+            onTap: () => context.push('/jobs'),
           ),
           ListTile(
             leading: const Icon(Icons.person),
             title: Text('user_profile'.tr()),
-            onTap: () => context.go('/profile'),
+            onTap: () => context.push('/profile'),
           ),
           ListTile(
             leading: const Icon(Icons.bug_report),
             title: Text('bug_report'.tr()),
-            onTap: () => context.go('/bug-report'),
+            onTap: () => context.push('/bug-report'),
           ),
           const Spacer(),
           ListTile(

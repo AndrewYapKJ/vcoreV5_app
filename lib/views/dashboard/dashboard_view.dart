@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/app_sidebar.dart';
-
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
@@ -55,7 +55,10 @@ class DashboardView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 32),
-            Text('Quick Actions', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 16,
@@ -63,17 +66,17 @@ class DashboardView extends StatelessWidget {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.list_alt),
                   label: const Text('Job List'),
-                  onPressed: () => Navigator.of(context).pushNamed('/jobs'),
+                  onPressed: () => context.push('/jobs'),
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.card_giftcard),
                   label: const Text('Incentive'),
-                  onPressed: () => Navigator.of(context).pushNamed('/incentive'),
+                  onPressed: () => context.push('/incentive-report'),
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.bug_report),
                   label: const Text('Bug Report'),
-                  onPressed: () => Navigator.of(context).pushNamed('/bug-report'),
+                  onPressed: () => context.push('/bug-report'),
                 ),
               ],
             ),
@@ -88,7 +91,11 @@ class _DashboardStatCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _DashboardStatCard({required this.icon, required this.label, required this.value});
+  const _DashboardStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {

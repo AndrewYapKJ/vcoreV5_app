@@ -1,0 +1,18 @@
+{
+  "app_title": "Logistics Driver App",
+  "login": "Login",
+  "dashboard": "Dashboard",
+  "sidebar": "Sidebar",
+  "job_list": "Job List",
+  "job_details": "Job Details",
+  "upload_photo": "Upload Photo",
+  "user_profile": "User Profile",
+  "bug_report": "Bug Report",
+  "incentive_report": "Incentive Report",
+  "download": "Download",
+  "leave_application": "Leave Application",
+  "advance_payment_request": "Advance Payment Request",
+  "safety_questions": "Safety Questions",
+  "car_inspection": "Car Inspection",
+  "start_job": "Start Job"
+}

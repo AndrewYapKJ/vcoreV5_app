@@ -1,0 +1,18 @@
+{
+  "app_title": "物流司机应用",
+  "login": "登录",
+  "dashboard": "仪表盘",
+  "sidebar": "侧边栏",
+  "job_list": "工作列表",
+  "job_details": "工作详情",
+  "upload_photo": "上传照片",
+  "user_profile": "用户资料",
+  "bug_report": "错误报告",
+  "incentive_report": "奖励报告",
+  "download": "下载",
+  "leave_application": "请假申请",
+  "advance_payment_request": "预付款申请",
+  "safety_questions": "安全问题",
+  "car_inspection": "车辆检查",
+  "start_job": "开始工作"
+}

@@ -5,7 +5,7 @@ import '../views/login/login_view.dart';
 import '../views/dashboard/dashboard_view.dart';
 import '../views/incentive/incentive_report_view.dart';
 import '../views/job/job_list_view.dart';
-import '../views/dashboard/main_shell_scaffold.dart';
+import '../views/landing/main_shell_scaffold.dart';
 import '../views/profile/profile_view.dart';
 import '../views/bug/bug_report_view.dart';
 import '../views/leave/leave_application_view.dart';
@@ -15,7 +15,7 @@ import '../views/safety/safety_question_view.dart';
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
   redirect: (context, state) {
-    if (state.uri.toString() == '/') return '/dashboard';
+    if (state.uri.toString() == '/') return '/login';
     return null;
   },
   routes: [
@@ -33,7 +33,7 @@ final GoRouter appRouter = GoRouter(
           currentIndex = 2;
         // Add more tabs as needed
 
-        return MainShellScaffold(child: child, currentIndex: currentIndex);
+        return MainShellScaffold(currentIndex: currentIndex, child: child);
       },
       routes: [
         GoRoute(

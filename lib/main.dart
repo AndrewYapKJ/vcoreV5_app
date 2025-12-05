@@ -4,19 +4,22 @@ import 'core/localization_provider.dart';
 import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 import 'controllers/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   runApp(
-    EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('ms'), Locale('zh')],
-      path: 'assets/lang',
-      fallbackLocale: const Locale('en'),
-      child: ChangeNotifierProvider(
-        create: (_) => ThemeController(),
-        child: const MyApp(),
+    ProviderScope(
+      child: EasyLocalization(
+        supportedLocales: const [Locale('en'), Locale('ms'), Locale('zh')],
+        path: 'assets/lang',
+        fallbackLocale: const Locale('en'),
+        child: ChangeNotifierProvider(
+          create: (_) => ThemeController(),
+          child: const MyApp(),
+        ),
       ),
     ),
   );

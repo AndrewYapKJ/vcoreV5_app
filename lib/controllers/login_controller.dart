@@ -1,27 +1,100 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../services/auth_service.dart';
+import '../services/local_storage_service.dart';
+import '../models/user_model.dart';
 
-final loginControllerProvider =
-    StateNotifierProvider<LoginController, AsyncValue<bool>>(
-      (ref) => LoginController(),
+part 'login_controller.g.dart';
+
+@riverpod
+class LoginController extends _$LoginController {
+  final _authService = AuthService();
+  final _storage = LocalStorageService();
+
+  @override
+  LoginState build() => LoginState.initial();
+
+  Future<void> login() async {
+    if (!state.isValid) return;
+
+    state = state.copyWith(isLoading: true);
+
+    final result = await _authService.login(
+      state.userId.trim(),
+      state.password.trim(),
     );
 
-class LoginController extends StateNotifier<AsyncValue<bool>> {
-  LoginController() : super(const AsyncValue.data(false));
-
-  Future<void> login(String email, String password, bool rememberMe) async {
-    state = const AsyncValue.loading();
-    try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
-      // Fake success if email contains 'test'
-      if (email.contains('test')) {
-        state = const AsyncValue.data(true);
-      } else {
-        state = AsyncValue.error('Invalid credentials', StackTrace.current);
+    if (result == true) {
+      if (state.rememberMe) {
+        await _storage.saveRememberMe(true);
+        await _storage.saveUserId(state.userId);
       }
-    } catch (e) {
-      state = AsyncValue.error('Network error', StackTrace.current);
+
+      state = state.copyWith(
+        isLoading: false,
+        success: true,
+        user: UserModel(state.userId),
+      );
+    } else {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: "Invalid login credentials.",
+      );
     }
+  }
+
+  void setUserId(String v) => state = state.copyWith(userId: v);
+  void setPassword(String v) => state = state.copyWith(password: v);
+  void toggleRememberMe(bool v) => state = state.copyWith(rememberMe: v);
+}
+
+class LoginState {
+  final String userId;
+  final String password;
+  final bool rememberMe;
+  final bool isLoading;
+  final String? errorMessage;
+  final bool success;
+  final UserModel? user;
+
+  bool get isValid => userId.isNotEmpty && password.length >= 6;
+
+  LoginState({
+    required this.userId,
+    required this.password,
+    required this.rememberMe,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.success,
+    required this.user,
+  });
+
+  factory LoginState.initial() => LoginState(
+    userId: "",
+    password: "",
+    rememberMe: false,
+    isLoading: false,
+    errorMessage: null,
+    success: false,
+    user: null,
+  );
+
+  LoginState copyWith({
+    String? userId,
+    String? password,
+    bool? rememberMe,
+    bool? isLoading,
+    String? errorMessage,
+    bool? success,
+    UserModel? user,
+  }) {
+    return LoginState(
+      userId: userId ?? this.userId,
+      password: password ?? this.password,
+      rememberMe: rememberMe ?? this.rememberMe,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage,
+      success: success ?? this.success,
+      user: user ?? this.user,
+    );
   }
 }

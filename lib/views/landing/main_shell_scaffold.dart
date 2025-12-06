@@ -17,6 +17,9 @@ class MainShellScaffold extends StatelessWidget {
       body: child,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
+        selectedIconTheme: IconThemeData(size: 30),
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
+        selectedItemColor: Theme.of(context).colorScheme.primary,
         onTap: (index) {
           switch (index) {
             case 0:
@@ -30,7 +33,7 @@ class MainShellScaffold extends StatelessWidget {
               break;
           }
         },
-        items: const [
+        items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Dashboard'),
           BottomNavigationBarItem(
             icon: Icon(Icons.card_giftcard),

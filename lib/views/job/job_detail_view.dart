@@ -9,7 +9,10 @@ class JobDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Text('job_details'.tr() + ' #$jobId', style: const TextStyle(fontSize: 24)),
+        child: Text(
+          '${'job_details'.tr()} #$jobId',
+          style: const TextStyle(fontSize: 24),
+        ),
       ),
     );
   }

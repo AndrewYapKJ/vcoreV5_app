@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../views/splash/splash_view.dart';
 import '../views/login/login_view.dart';
@@ -27,10 +26,11 @@ final GoRouter appRouter = GoRouter(
         // Pass the current index to the shell scaffold
         final location = state.uri.path;
         int currentIndex = 0;
-        if (location.startsWith('/incentive-report'))
+        if (location.startsWith('/incentive-report')) {
           currentIndex = 1;
-        else if (location.startsWith('/jobs'))
+        } else if (location.startsWith('/jobs')) {
           currentIndex = 2;
+        }
         // Add more tabs as needed
 
         return MainShellScaffold(currentIndex: currentIndex, child: child);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'core/localization_provider.dart';
 import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
@@ -12,12 +13,14 @@ void main() async {
   await EasyLocalization.ensureInitialized();
   runApp(
     ProviderScope(
-      child: EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('ms'), Locale('zh')],
-        path: 'assets/lang',
-        fallbackLocale: const Locale('en'),
-        child: ChangeNotifierProvider(
-          create: (_) => ThemeController(),
+      child: ScaleKitBuilder(
+        designWidth: 375,
+        designHeight: 812,
+        designType: DeviceType.mobile,
+        child: EasyLocalization(
+          supportedLocales: const [Locale('en'), Locale('ms'), Locale('zh')],
+          path: 'assets/lang',
+          fallbackLocale: const Locale('en'),
           child: const MyApp(),
         ),
       ),
@@ -25,46 +28,30 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
-  static final List<FlexScheme> _schemes = [
-    FlexScheme.material,
-    FlexScheme.hippieBlue,
-    FlexScheme.mandyRed,
-    FlexScheme.money,
-    FlexScheme.espresso,
-    FlexScheme.outerSpace,
-  ];
-
+  static final List<FlexScheme> _schemes = FlexScheme.values;
   @override
-  Widget build(BuildContext context) {
-    final themeController = Provider.of<ThemeController>(context);
-    return MaterialApp.router(
-      title: 'Logistics Driver App',
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
-      theme: FlexColorScheme.light(
-        scheme: _schemes[themeController.schemeIndex],
-      ).toTheme,
-      darkTheme: FlexColorScheme.dark(
-        scheme: _schemes[themeController.schemeIndex],
-      ).toTheme,
-      themeMode: themeController.themeMode,
-      routerConfig: appRouter,
-    );
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeAsync = ref.watch(themeControllerProvider);
 
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text('app_title'.tr(), style: const TextStyle(fontSize: 24)),
+    return themeAsync.when(
+      loading: () => MaterialApp(home: SizedBox()),
+      error: (_, __) => MaterialApp(home: Text("Theme error")),
+      data: (theme) => MaterialApp.router(
+        title: 'Logistics Driver App',
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        theme: FlexColorScheme.light(
+          scheme: _schemes[theme.schemeIndex],
+        ).toTheme,
+        darkTheme: FlexColorScheme.dark(
+          scheme: _schemes[theme.schemeIndex],
+        ).toTheme,
+        themeMode: theme.themeMode,
+        routerConfig: appRouter,
       ),
     );
   }

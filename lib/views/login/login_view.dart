@@ -1,160 +1,228 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../controllers/login_controller.dart';
+import 'dart:ui';
 
-class LoginView extends ConsumerStatefulWidget {
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vcore_v5_app/controllers/login_controller.dart';
+import 'package:flutter_scale_kit/flutter_scale_kit.dart';
+import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/widgets/theme_changer.dart';
+import 'package:vcore_v5_app/widgets/theme_mode.dart';
+
+class LoginView extends ConsumerWidget {
   const LoginView({super.key});
 
   @override
-  ConsumerState<LoginView> createState() => _LoginViewState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final login = ref.watch(loginControllerProvider);
+    final notifier = ref.read(loginControllerProvider.notifier);
 
-class _LoginViewState extends ConsumerState<LoginView> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _rememberMe = false;
+    final colorScheme = Theme.of(context).colorScheme;
 
-  void _login() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      await ref
-          .read(loginControllerProvider.notifier)
-          .login(_emailController.text, _passwordController.text, _rememberMe);
-      final loginState = ref.read(loginControllerProvider);
-      loginState.when(
-        data: (success) {
-          if (success) context.go('/dashboard');
-        },
-        error: (err, _) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(err.toString())));
-        },
-        loading: () {},
-      );
-    }
-  }
+    ref.listen(loginControllerProvider, (prev, next) {
+      if (next.success) {
+        context.go('/dashboard');
+      }
+    });
 
-  @override
-  Widget build(BuildContext context) {
-    final loginState = ref.watch(loginControllerProvider);
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Logistics Driver App',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 32),
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colorScheme.primary, colorScheme.secondary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          children: [
+            Spacer(),
+            Icon(Icons.g_mobiledata, size: 240.h, color: Colors.white),
+            Spacer(),
+            ThemeChanger(),
+            ThemeModeToggle(),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty)
-                              return 'Please enter your email';
-                            if (!value.contains('@')) return 'Invalid email';
-                            return null;
-                          },
+              ),
+              padding: EdgeInsets.fromLTRB(
+                24.w,
+                12.h,
+                24.w,
+                12.h + MediaQuery.of(context).viewInsets.bottom + 12.h,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextField(
+                    onChanged: notifier.setUserId,
+                    style: TextStyle(fontSize: 14.sp),
+                    decoration: InputDecoration(
+                      labelText: "Email Address",
+                      labelStyle: context.font
+                          .semibold(context)
+                          .copyWith(fontSize: 14.sp),
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                        // color: Theme.of(context).colorScheme.surface,
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          width: 1.2,
+                          // color: Theme.of(context).colorScheme.surface,
                         ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.isEmpty)
-                              return 'Please enter your password';
-                            if (value.length < 6) return 'Password too short';
-                            return null;
-                          },
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          width: 1.5,
+                          // color: Theme.of(context).colorScheme.surface,
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: _rememberMe,
-                              onChanged: (val) =>
-                                  setState(() => _rememberMe = val ?? false),
-                            ),
-                            const Text('Remember me'),
-                            const Spacer(),
-                            TextButton(
-                              onPressed: () {
-                                // TODO: Implement forgot password
-                              },
-                              child: const Text('Forgot password?'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: loginState.isLoading ? null : _login,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: loginState.isLoading
-                                ? const CircularProgressIndicator()
-                                : const Text(
-                                    'Login',
-                                    style: TextStyle(fontSize: 18),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text("Don't have an account? "),
-                            TextButton(
-                              onPressed: () {
-                                context.go('/register');
-                              },
-                              child: const Text('Register'),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
+                      errorBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(width: 1.2, color: Colors.red),
+                      ),
+                      errorText: login.userId.isEmpty ? "Required" : null,
+                      errorStyle: context.font
+                          .mediumError(context)
+                          .copyWith(fontSize: 12.sp),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 0,
+                      ),
                     ),
                   ),
-                ),
+                  SizedBox(height: 4.h),
+                  TextField(
+                    obscureText: true,
+                    onChanged: notifier.setPassword,
+                    style: context.font.copyWith(fontSize: 14.sp),
+                    decoration: InputDecoration(
+                      labelText: "Password",
+                      labelStyle: context.font
+                          .semibold(context)
+                          .copyWith(fontSize: 14.sp),
+                      prefixIcon: Icon(
+                        Icons.lock_outline,
+                        // color: Theme.of(context).colorScheme.surface,
+                      ),
+                      suffixIcon: Icon(
+                        Icons.visibility_off_outlined,
+                        // color: Theme.of(context).colorScheme.surface,
+                      ),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          width: 1.2,
+                          // color: Theme.of(context).colorScheme.surface,
+                        ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          width: 1.5,
+                          // color: Theme.of(context).colorScheme.surface,
+                        ),
+                      ),
+                      errorBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(width: 1.2, color: Colors.red),
+                      ),
+                      errorText: login.password.length < 6
+                          ? "Min 6 chars"
+                          : null,
+                      errorStyle: context.font
+                          .mediumError(context)
+                          .copyWith(fontSize: 12.sp),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 0,
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 4.h),
+
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: login.rememberMe,
+                        onChanged: (b) {
+                          if (b != null) {
+                            notifier.toggleRememberMe(b);
+                          }
+                        },
+                      ),
+                      Text(
+                        "Remember Me",
+                        style: context.font
+                            .semibold(context)
+                            .copyWith(fontSize: 13.sp),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: login.isLoading
+                          ? null
+                          : () => notifier.login(),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        backgroundColor: colorScheme.primary,
+                        elevation: 0,
+                      ),
+                      child: login.isLoading
+                          ? CircularProgressIndicator(
+                              color: colorScheme.onPrimary,
+                              strokeWidth: 2.2,
+                            )
+                          : Text(
+                              'Login',
+                              style: context.font
+                                  .semibold(context)
+                                  .copyWith(fontSize: 14.sp),
+                            ),
+                    ),
+                  ),
+                  if (login.errorMessage != null)
+                    Padding(
+                      padding: EdgeInsets.only(top: 8.h),
+                      child: Text(
+                        login.errorMessage!,
+                        style: context.font
+                            .medium(context)
+                            .copyWith(fontSize: 13.sp),
+                      ),
+                    ),
+                  SizedBox(height: 10.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          // TODO: Implement forgot password
+                        },
+                        child: Text(
+                          'Forgot password?',
+                          // style: context.font
+                          //     .medium(context)
+                          //     .copyWith(fontSize: 13.sp),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

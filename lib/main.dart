@@ -2,8 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:vcore_v5_app/services/firebase_service.dart';
 import 'package:vcore_v5_app/services/remote_config_service.dart';
+import 'package:vcore_v5_app/services/env_service.dart';
 import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
@@ -11,8 +13,41 @@ import 'controllers/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env file or system environment
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint('✓ Loaded environment variables from .env file');
+  } catch (e) {
+    debugPrint('⚠ Could not load .env file: $e');
+    debugPrint('  Using system environment variables instead');
+  }
+
+  // Validate required environment variables
+  try {
+    final missingVars = EnvService.validateEnvironment();
+    if (missingVars.isNotEmpty) {
+      debugPrint(
+        '⚠ WARNING: Missing environment variables: ${missingVars.join(", ")}\n'
+        '  Please add them to your .env file or set them as system environment variables.',
+      );
+    } else {
+      debugPrint('✓ All environment variables loaded successfully');
+    }
+  } catch (e) {
+    debugPrint('⚠ Warning: Environment validation error: $e');
+  }
+
   await EasyLocalization.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('✓ Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('✗ Firebase initialization error: $e');
+  }
 
   // Initialize remote config with fallback to Huawei
   await RemoteConfigService().initialize();

@@ -13,6 +13,10 @@ extension FontWeightExtension on TextStyle {
     fontWeight: FontWeight.w500,
     // color: Theme.of(context).colorScheme.surface,
   );
+  TextStyle regular(BuildContext context) => copyWith(
+    fontWeight: FontWeight.w400,
+    // color: Theme.of(context).colorScheme.surface,
+  );
   TextStyle light(BuildContext context) => copyWith(
     fontWeight: FontWeight.w300,
     // color: Theme.of(context).colorScheme.surface,

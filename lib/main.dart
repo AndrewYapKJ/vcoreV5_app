@@ -1,16 +1,22 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
-import 'core/localization_provider.dart';
+import 'package:vcore_v5_app/services/firebase_service.dart';
+import 'package:vcore_v5_app/services/remote_config_service.dart';
 import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 import 'controllers/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize remote config with fallback to Huawei
+  await RemoteConfigService().initialize();
+
   runApp(
     ProviderScope(
       child: ScaleKitBuilder(
@@ -38,7 +44,7 @@ class MyApp extends ConsumerWidget {
 
     return themeAsync.when(
       loading: () => MaterialApp(home: SizedBox()),
-      error: (_, __) => MaterialApp(home: Text("Theme error")),
+      error: (_, _) => MaterialApp(home: Text("Theme error")),
       data: (theme) => MaterialApp.router(
         title: 'Logistics Driver App',
         localizationsDelegates: context.localizationDelegates,

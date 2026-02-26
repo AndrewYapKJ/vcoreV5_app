@@ -14,7 +14,7 @@ class LoginController extends _$LoginController {
   LoginState build() => LoginState.initial();
 
   Future<void> login() async {
-    if (!state.isValid) return;
+    // if (!state.isValid) return;
 
     state = state.copyWith(isLoading: true);
 

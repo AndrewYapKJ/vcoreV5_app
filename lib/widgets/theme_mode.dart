@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../controllers/theme_controller.dart';
 
 class ThemeModeToggle extends ConsumerWidget {
-  const ThemeModeToggle({Key? key}) : super(key: key);
+  const ThemeModeToggle({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

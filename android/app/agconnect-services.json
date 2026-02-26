@@ -1,0 +1,43 @@
+{
+  "agcgw_all": {
+    "SG": "connect-dra.dbankcloud.cn",
+    "SG_back": "connect-dra.hispace.hicloud.com",
+    "CN": "connect-drcn.dbankcloud.cn",
+    "CN_back": "connect-drcn.hispace.hicloud.com",
+    "RU": "connect-drru.hispace.dbankcloud.ru",
+    "RU_back": "connect-drru.hispace.dbankcloud.cn",
+    "DE": "connect-dre.dbankcloud.cn",
+    "DE_back": "connect-dre.hispace.hicloud.com"
+  },
+  "websocketgw_all": {
+    "SG": "connect-ws-dra.hispace.dbankcloud.cn",
+    "SG_back": "connect-ws-dra.hispace.dbankcloud.com",
+    "CN": "connect-ws-drcn.hispace.dbankcloud.cn",
+    "CN_back": "connect-ws-drcn.hispace.dbankcloud.com",
+    "RU": "connect-ws-drru.hispace.dbankcloud.ru",
+    "RU_back": "connect-ws-drru.hispace.dbankcloud.cn",
+    "DE": "connect-ws-dre.hispace.dbankcloud.cn",
+    "DE_back": "connect-ws-dre.hispace.dbankcloud.com"
+  },
+  "client": {
+    "cp_id": "2640060000022897419",
+    "product_id": "101653523863597943",
+    "client_id": "1892781601050330944",
+    "client_secret": "7A0A8C47FC4E3630010B4B3157E2FB9349026B0569CDBFA86D554BD6CDF704C3",
+    "project_id": "101653523863597943",
+    "app_id": "116968141",
+    "api_key": "DgEDAOFp+krw3YikhWzH5uIX9o36ahSwc0JLOh/b+hp/IYpgFvGfse7f65UMzdiHNk3N5ml1mBpaKp8IHP2eespJn9Rytp5ZO+6H4w==",
+    "package_name": "com.gis.vcorev5"
+  },
+  "oauth_client": { "client_id": "116968141", "client_type": 1 },
+  "app_info": { "app_id": "116968141", "package_name": "com.gis.vcorev5" },
+  "configuration_version": "3.0",
+  "appInfos": [
+    {
+      "package_name": "com.gis.vcorev5",
+      "client": { "app_id": "116968141" },
+      "app_info": { "package_name": "com.gis.vcorev5", "app_id": "116968141" },
+      "oauth_client": { "client_type": 1, "client_id": "116968141" }
+    }
+  ]
+}

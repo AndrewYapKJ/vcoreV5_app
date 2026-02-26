@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <key>client</key>
+    <dict>
+        <key>app_id</key>
+        <string>116968141</string>
+		  <key>api_key</key>
+		  <string>DgEDAOFp+krw3YikhWzH5uIX9o36ahSwc0JLOh/b+hp/IYpgFvGfse7f65UMzdiHNk3N5ml1mBpaKp8IHP2eespJn9Rytp5ZO+6H4w==</string>
+       
+		  <key>cp_id</key>
+        <string>2640060000022897419</string>
+
+   	  <key>client_id</key>
+        <string>1892781601050330944</string>
+		  <key>client_secret</key>
+        <string>7A0A8C47FC4E3630010B4B3157E2FB9349026B0569CDBFA86D554BD6CDF704C3</string>
+        
+		  <key>product_id</key>
+        <string>101653523863597943</string>
+		  <key>project_id</key>
+        <string>101653523863597943</string>
+     
+        <key>package_name</key>
+        <string>com.gis.vcorev5</string>
+    </dict>
+
+    <key>configuration_version</key>
+    <string>1.0</string>
+
+</dict>
+</plist>

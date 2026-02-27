@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:vcore_v5_app/controllers/register_controller.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
@@ -38,19 +39,19 @@ class RegisterView extends ConsumerWidget {
         child: SingleChildScrollView(
           child: Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header Section
                 Text(
-                  'Create Account',
+                  'create_account'.tr(),
                   style: context.font.bold(context).copyWith(fontSize: 32.sp),
                   textAlign: TextAlign.start,
                 ),
                 SizedBox(height: 8.h),
                 Text(
-                  'Join us to get started',
+                  'join_us_started'.tr(),
                   style: context.font
                       .regular(context)
                       .copyWith(
@@ -59,61 +60,65 @@ class RegisterView extends ConsumerWidget {
                       ),
                   textAlign: TextAlign.start,
                 ),
-                SizedBox(height: 32.h),
+                SizedBox(height: 16.h),
                 // Form Section
                 Column(
                   children: [
                     // Full Name Field
                     _buildModernTextField(
                       context: context,
-                      label: 'Full Name',
+                      label: 'full_name'.tr(),
                       icon: Icons.person_outline,
                       onChanged: notifier.setFullName,
-                      errorText: register.fullName.isEmpty ? "Required" : null,
+                      errorText: register.fullName.isEmpty
+                          ? 'required'.tr()
+                          : null,
                       colorScheme: colorScheme,
                     ),
                     SizedBox(height: 16.h),
                     // Email Field
                     _buildModernTextField(
                       context: context,
-                      label: 'Email Address',
+                      label: 'email_address'.tr(),
                       icon: Icons.email_outlined,
                       onChanged: notifier.setEmail,
                       errorText:
                           register.email.isNotEmpty && !register.isValidEmail
-                          ? "Invalid email"
-                          : (register.email.isEmpty ? "Required" : null),
+                          ? 'invalid_email'.tr()
+                          : (register.email.isEmpty ? 'required'.tr() : null),
                       colorScheme: colorScheme,
                     ),
                     SizedBox(height: 16.h),
                     // Password Field
                     _buildModernTextField(
                       context: context,
-                      label: 'Password',
+                      label: 'password'.tr(),
                       icon: Icons.lock_outline,
                       obscure: true,
                       onChanged: notifier.setPassword,
                       errorText:
                           register.password.isNotEmpty &&
                               !register.isPasswordStrong
-                          ? "Min 6 chars, 1 uppercase, 1 number"
-                          : (register.password.isEmpty ? "Required" : null),
+                          ? 'min_password_requirements'.tr()
+                          : (register.password.isEmpty
+                                ? 'required'.tr()
+                                : null),
                       colorScheme: colorScheme,
                     ),
                     SizedBox(height: 16.h),
                     // Confirm Password Field
                     _buildModernTextField(
                       context: context,
-                      label: 'Confirm Password',
+                      label: 'confirm_password'.tr(),
                       icon: Icons.lock_outline,
                       obscure: true,
                       onChanged: notifier.setConfirmPassword,
                       errorText:
                           register.confirmPassword.isNotEmpty &&
                               !register.isPasswordMatch
-                          ? "Passwords don't match"
+                          ? 'passwords_dont_match'.tr()
                           : (register.confirmPassword.isEmpty
-                                ? "Required"
+                                ? 'required'.tr()
                                 : null),
                       colorScheme: colorScheme,
                     ),
@@ -137,7 +142,7 @@ class RegisterView extends ConsumerWidget {
                         ),
                         Expanded(
                           child: Text(
-                            'I agree to the Terms and Conditions',
+                            'agree_to_terms'.tr(),
                             style: context.font
                                 .regular(context)
                                 .copyWith(fontSize: 13.sp),
@@ -207,7 +212,7 @@ class RegisterView extends ConsumerWidget {
                                 strokeWidth: 2,
                               )
                             : Text(
-                                'Create Account',
+                                'sign_up_button'.tr(),
                                 style: context.font
                                     .semibold(context)
                                     .copyWith(
@@ -223,7 +228,7 @@ class RegisterView extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Already have an account? ',
+                          'already_have_account'.tr(),
                           style: context.font
                               .regular(context)
                               .copyWith(fontSize: 13.sp),
@@ -231,16 +236,16 @@ class RegisterView extends ConsumerWidget {
                         TextButton(
                           onPressed: () => context.pop(),
                           style: TextButton.styleFrom(
-                            foregroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.secondary,
                             padding: EdgeInsets.zero,
                           ),
                           child: Text(
-                            'Sign In',
+                            'sign_in'.tr(),
                             style: context.font
                                 .semibold(context)
                                 .copyWith(
                                   fontSize: 13.sp,
-                                  color: colorScheme.primary,
+                                  color: colorScheme.secondary,
                                 ),
                           ),
                         ),
@@ -309,7 +314,7 @@ class RegisterView extends ConsumerWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+              borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),

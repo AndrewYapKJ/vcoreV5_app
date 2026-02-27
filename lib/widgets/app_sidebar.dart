@@ -24,7 +24,7 @@ class AppSidebar extends StatelessWidget {
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              color: Theme.of(context).colorScheme.secondaryContainer,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

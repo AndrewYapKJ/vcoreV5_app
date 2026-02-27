@@ -203,13 +203,13 @@ class _SplashViewState extends State<SplashView> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          colorScheme.primary,
-                          colorScheme.primary.withValues(alpha: 0.7),
+                          colorScheme.tertiary,
+                          colorScheme.tertiary.withValues(alpha: 0.7),
                         ],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
+                          color: colorScheme.tertiary.withValues(alpha: 0.3),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),

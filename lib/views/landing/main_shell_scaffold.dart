@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 
 class MainShellScaffold extends StatefulWidget {
@@ -29,13 +30,13 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
   String _getPageTitle(int index) {
     switch (index) {
       case 0:
-        return 'Job Requests';
+        return 'job_requests'.tr();
       case 1:
-        return 'Jobs';
+        return 'jobs'.tr();
       case 2:
-        return 'Incentives';
+        return 'incentive'.tr();
       default:
-        return 'Dashboard';
+        return 'dashboard'.tr();
     }
   }
 
@@ -171,13 +172,13 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    colorScheme.primary.withValues(alpha: 0.15),
-                    colorScheme.primary.withValues(alpha: 0.05),
+                    colorScheme.secondary.withValues(alpha: 0.15),
+                    colorScheme.secondary.withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: colorScheme.primary.withValues(alpha: 0.2),
+                  color: colorScheme.secondary.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -192,11 +193,11 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [colorScheme.primary, colorScheme.secondary],
+                        colors: [colorScheme.secondary, colorScheme.tertiary],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
+                          color: colorScheme.secondary.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -249,11 +250,15 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
               child: ListView(
                 padding: EdgeInsets.symmetric(horizontal: 4.h, vertical: 2.h),
                 children: [
-                  _buildDrawerSectionHeader(context, 'Account', colorScheme),
+                  _buildDrawerSectionHeader(
+                    context,
+                    'account'.tr(),
+                    colorScheme,
+                  ),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.person_outline,
-                    label: 'Profile',
+                    label: 'profile'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/profile');
@@ -263,7 +268,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.settings_outlined,
-                    label: 'Settings',
+                    label: 'settings'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/settings');
@@ -273,13 +278,13 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   SizedBox(height: 6.h),
                   _buildDrawerSectionHeader(
                     context,
-                    'Application',
+                    'application'.tr(),
                     colorScheme,
                   ),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.assignment_turned_in_outlined,
-                    label: 'Leave Application',
+                    label: 'leave_application'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/leave-application');
@@ -289,7 +294,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.payment,
-                    label: 'Advance Payment',
+                    label: 'advance_payment_request'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/advance-payment');
@@ -297,11 +302,15 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                     colorScheme: colorScheme,
                   ),
                   SizedBox(height: 6.h),
-                  _buildDrawerSectionHeader(context, 'Support', colorScheme),
+                  _buildDrawerSectionHeader(
+                    context,
+                    'support'.tr(),
+                    colorScheme,
+                  ),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.security_outlined,
-                    label: 'Safety Questions',
+                    label: 'safety_questions'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/safety-questions');
@@ -311,7 +320,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.bug_report_outlined,
-                    label: 'Report Bug',
+                    label: 'bug_report'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/bug-report');
@@ -321,7 +330,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.help_outline,
-                    label: 'Help & Support',
+                    label: 'help_support'.tr(),
                     onTap: () {
                       Navigator.pop(context);
                       // TODO: Implement help
@@ -353,7 +362,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   ),
                   icon: Icon(Icons.logout, size: 16.h),
                   label: Text(
-                    'Logout',
+                    'logout'.tr(),
                     style: context.font
                         .semibold(context)
                         .copyWith(fontSize: 12.sp, color: Colors.red),
@@ -411,10 +420,10 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                     width: 32.h,
                     height: 32.h,
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      color: colorScheme.tertiary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, size: 16.h, color: colorScheme.primary),
+                    child: Icon(icon, size: 16.h, color: colorScheme.tertiary),
                   ),
                   SizedBox(width: 8.w),
                   Expanded(

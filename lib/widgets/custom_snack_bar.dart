@@ -38,8 +38,8 @@ class CustomSnackBar {
         break;
       case SnackBarType.info:
         icon = Icons.info_outline;
-        backgroundColor = colorScheme.primary.withValues(alpha: 0.1);
-        iconColor = colorScheme.primary;
+        backgroundColor = colorScheme.secondary.withValues(alpha: 0.1);
+        iconColor = colorScheme.secondary;
         textColor = colorScheme.onSurface;
         break;
     }

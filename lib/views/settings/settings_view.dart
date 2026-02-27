@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/controllers/theme_controller.dart';
+import 'package:vcore_v5_app/services/localization_storage_service.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({super.key});
@@ -15,12 +17,13 @@ class SettingsView extends ConsumerWidget {
     final themeAsync = ref.watch(themeControllerProvider);
     final controller = ref.read(themeControllerProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
+    final localizationStorage = LocalizationStorageService();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Settings',
+          'settings'.tr(),
           style: context.font
               .bold(context)
               .copyWith(fontSize: 20.sp, color: colorScheme.onSurface),
@@ -38,7 +41,7 @@ class SettingsView extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Theme Mode Section
-                _buildSectionTitle(context, 'Appearance'),
+                _buildSectionTitle(context, 'appearance'.tr()),
                 SizedBox(height: 12.h),
                 _buildThemeModeCard(
                   context: context,
@@ -49,7 +52,7 @@ class SettingsView extends ConsumerWidget {
                 SizedBox(height: 32.h),
 
                 // Color Scheme Section
-                _buildSectionTitle(context, 'Color Scheme'),
+                _buildSectionTitle(context, 'color_scheme'.tr()),
                 SizedBox(height: 12.h),
                 _buildColorSchemeDropdown(
                   context: context,
@@ -59,8 +62,18 @@ class SettingsView extends ConsumerWidget {
                 ),
                 SizedBox(height: 32.h),
 
+                // Language Section
+                _buildSectionTitle(context, 'language'.tr()),
+                SizedBox(height: 12.h),
+                _buildLanguageDropdown(
+                  context: context,
+                  colorScheme: colorScheme,
+                  localizationStorage: localizationStorage,
+                ),
+                SizedBox(height: 32.h),
+
                 // Color Scheme Preview
-                _buildSectionTitle(context, 'Scheme Colors'),
+                _buildSectionTitle(context, 'scheme_colors'.tr()),
                 SizedBox(height: 12.h),
                 _buildColorPreview(colorScheme),
                 SizedBox(height: 32.h),
@@ -98,15 +111,15 @@ class SettingsView extends ConsumerWidget {
               theme.themeMode == ThemeMode.light
                   ? Icons.light_mode_outlined
                   : Icons.dark_mode_outlined,
-              color: colorScheme.primary,
+              color: colorScheme.secondary,
               size: 24.h,
             ),
             title: Text(
-              'Theme Mode',
+              'theme_mode'.tr(),
               style: context.font.medium(context).copyWith(fontSize: 14.sp),
             ),
             trailing: Text(
-              theme.themeMode == ThemeMode.light ? 'Light' : 'Dark',
+              theme.themeMode == ThemeMode.light ? 'light'.tr() : 'dark'.tr(),
               style: context.font
                   .regular(context)
                   .copyWith(
@@ -123,7 +136,7 @@ class SettingsView extends ConsumerWidget {
                 Expanded(
                   child: _buildModeButton(
                     context: context,
-                    label: 'Light',
+                    label: 'light'.tr(),
                     isSelected: theme.themeMode == ThemeMode.light,
                     onTap: theme.themeMode != ThemeMode.light
                         ? () => controller.toggleThemeMode()
@@ -135,7 +148,7 @@ class SettingsView extends ConsumerWidget {
                 Expanded(
                   child: _buildModeButton(
                     context: context,
-                    label: 'Dark',
+                    label: 'dark'.tr(),
                     isSelected: theme.themeMode == ThemeMode.dark,
                     onTap: theme.themeMode != ThemeMode.dark
                         ? () => controller.toggleThemeMode()
@@ -277,6 +290,57 @@ class SettingsView extends ConsumerWidget {
             style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageDropdown({
+    required BuildContext context,
+    required ColorScheme colorScheme,
+    required LocalizationStorageService localizationStorage,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12.w),
+        child: DropdownButton<String>(
+          value: context.locale.languageCode,
+          isExpanded: true,
+          underline: SizedBox(),
+          onChanged: (String? value) {
+            if (value != null) {
+              context.setLocale(Locale(value));
+              localizationStorage.saveLocale(value);
+            }
+          },
+          items: [
+            DropdownMenuItem(
+              value: 'en',
+              child: Text(
+                'english'.tr(),
+                style: context.font.regular(context).copyWith(fontSize: 14.sp),
+              ),
+            ),
+            DropdownMenuItem(
+              value: 'ms',
+              child: Text(
+                'malay'.tr(),
+                style: context.font.regular(context).copyWith(fontSize: 14.sp),
+              ),
+            ),
+            DropdownMenuItem(
+              value: 'zh',
+              child: Text(
+                'chinese'.tr(),
+                style: context.font.regular(context).copyWith(fontSize: 14.sp),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

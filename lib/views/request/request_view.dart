@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
 // Sample data for dropdowns
-const List<String> trailerOptions = [
-  'Flatbed',
-  'Refrigerated',
-  'Tanker',
-  'Cargo Van',
-  'Enclosed',
-  'Open Deck',
-  'Side Loader',
+final List<String> Function(BuildContext) getTrailerOptions = (context) => [
+  'flatbed'.tr(),
+  'refrigerated'.tr(),
+  'tanker'.tr(),
+  'cargo_van'.tr(),
+  'enclosed'.tr(),
+  'open_deck'.tr(),
+  'side_loader'.tr(),
 ];
 
-const List<String> vehicleOptions = [
+final List<String> Function(BuildContext) getVehicleOptions = (context) => [
   '1 Vehicle',
   '2 Vehicles',
   '3 Vehicles',
@@ -63,8 +64,6 @@ class _RequestViewState extends State<RequestView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 8.h),
-
                 // PM ID Section - Enhanced Card
                 // Container(
                 //   width: double.infinity,
@@ -139,14 +138,18 @@ class _RequestViewState extends State<RequestView> {
                 // SizedBox(height: 28.h),
 
                 // Job Type Section - Enhanced
-                _buildSectionLabel(context, 'Job Type', Icons.work_outline),
-                SizedBox(height: 12.h),
+                _buildSectionLabel(
+                  context,
+                  'job_type'.tr(),
+                  Icons.work_outline,
+                ),
+                SizedBox(height: 8.h),
                 Row(
                   children: [
                     Expanded(
                       child: _buildRadioOption(
                         context: context,
-                        label: 'Delivery',
+                        label: 'delivery'.tr(),
                         value: 'delivery',
                         icon: Icons.local_shipping_outlined,
                         groupValue: selectedJobType,
@@ -156,11 +159,11 @@ class _RequestViewState extends State<RequestView> {
                         colorScheme: colorScheme,
                       ),
                     ),
-                    SizedBox(width: 12.w),
+                    SizedBox(width: 8.w),
                     Expanded(
                       child: _buildRadioOption(
                         context: context,
-                        label: 'Collection',
+                        label: 'collection'.tr(),
                         value: 'collection',
                         icon: Icons.inventory_2_outlined,
                         groupValue: selectedJobType,
@@ -172,15 +175,15 @@ class _RequestViewState extends State<RequestView> {
                     ),
                   ],
                 ),
-                SizedBox(height: 28.h),
+                SizedBox(height: 16.h),
 
                 // Container Size Section - Enhanced
                 _buildSectionLabel(
                   context,
-                  'Container Size',
+                  'container_size'.tr(),
                   Icons.square_foot,
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 8.h),
                 Row(
                   children: [
                     Expanded(
@@ -229,12 +232,12 @@ class _RequestViewState extends State<RequestView> {
                     ),
                   ],
                 ),
-                SizedBox(height: 28.h),
+                SizedBox(height: 16.h),
 
                 // Container Number Section - Enhanced
                 _buildSectionLabel(
                   context,
-                  'Container Number',
+                  'container_number'.tr(),
                   Icons.inventory,
                 ),
                 SizedBox(height: 12.h),
@@ -246,15 +249,19 @@ class _RequestViewState extends State<RequestView> {
                   suffixIcon: Icons.qr_code_2,
                   colorScheme: colorScheme,
                 ),
-                SizedBox(height: 28.h),
+                SizedBox(height: 20.h),
 
                 // Trailer Section - Enhanced with Typeahead
-                _buildSectionLabel(context, 'Trailer', Icons.directions_car),
+                _buildSectionLabel(
+                  context,
+                  'trailer'.tr(),
+                  Icons.directions_car,
+                ),
                 SizedBox(height: 12.h),
                 _buildTypeaheadField(
                   context: context,
                   controller: trailerController,
-                  options: trailerOptions,
+                  options: getTrailerOptions(context),
                   hint: 'Search trailer type',
                   icon: Icons.local_shipping_outlined,
                   onSelected: (value) {
@@ -265,15 +272,19 @@ class _RequestViewState extends State<RequestView> {
                   },
                   colorScheme: colorScheme,
                 ),
-                SizedBox(height: 28.h),
+                SizedBox(height: 20.h),
 
                 // Vehicles Section - Enhanced with Typeahead
-                _buildSectionLabel(context, 'Vehicles', Icons.directions_bus),
+                _buildSectionLabel(
+                  context,
+                  'vehicles'.tr(),
+                  Icons.directions_bus,
+                ),
                 SizedBox(height: 12.h),
                 _buildTypeaheadField(
                   context: context,
                   controller: vehiclesController,
-                  options: vehicleOptions,
+                  options: getVehicleOptions(context),
                   hint: 'Search vehicle count',
                   icon: Icons.directions_car_filled,
                   onSelected: (value) {
@@ -325,8 +336,7 @@ class _RequestViewState extends State<RequestView> {
                                     setState(() => isLoading = false);
                                     CustomSnackBar.showSuccess(
                                       context,
-                                      message:
-                                          'Job request submitted successfully!',
+                                      message: 'request_submitted'.tr(),
                                     );
                                     containerNoController.clear();
                                     setState(() {
@@ -340,7 +350,7 @@ class _RequestViewState extends State<RequestView> {
                               } else {
                                 CustomSnackBar.showWarning(
                                   context,
-                                  message: 'Please fill all fields',
+                                  message: 'Please fill all fields'.tr(),
                                 );
                               }
                             },
@@ -365,7 +375,7 @@ class _RequestViewState extends State<RequestView> {
                                   ),
                                   SizedBox(width: 10.w),
                                   Text(
-                                    'Submit Request',
+                                    'submit_request'.tr(),
                                     style: context.font
                                         .bold(context)
                                         .copyWith(
@@ -396,10 +406,10 @@ class _RequestViewState extends State<RequestView> {
         Container(
           padding: EdgeInsets.all(6.h),
           decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: 0.12),
+            color: colorScheme.secondary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: colorScheme.primary, size: 16.h),
+          child: Icon(icon, color: colorScheme.secondary, size: 16.h),
         ),
         SizedBox(width: 10.w),
         Text(

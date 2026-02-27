@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 
 // Sample user data
@@ -32,7 +33,7 @@ class ProfileView extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Profile',
+          'profile'.tr(),
           style: context.font
               .semibold(context)
               .copyWith(fontSize: 18.sp, color: colorScheme.onSurface),
@@ -56,13 +57,13 @@ class ProfileView extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      colorScheme.primary.withValues(alpha: 0.12),
-                      colorScheme.primary.withValues(alpha: 0.05),
+                      colorScheme.secondary.withValues(alpha: 0.12),
+                      colorScheme.secondary.withValues(alpha: 0.05),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: colorScheme.primary.withValues(alpha: 0.15),
+                    color: colorScheme.secondary.withValues(alpha: 0.15),
                     width: 1,
                   ),
                 ),
@@ -77,14 +78,14 @@ class ProfileView extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            colorScheme.primary,
-                            colorScheme.primary.withValues(alpha: 0.7),
+                            colorScheme.tertiary,
+                            colorScheme.tertiary.withValues(alpha: 0.7),
                           ],
                         ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.primary.withValues(alpha: 0.3),
+                            color: colorScheme.tertiary.withValues(alpha: 0.3),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -102,7 +103,7 @@ class ProfileView extends StatelessWidget {
                               .bold(context)
                               .copyWith(
                                 fontSize: 28.sp,
-                                color: colorScheme.onPrimary,
+                                color: colorScheme.onTertiary,
                               ),
                         ),
                       ),
@@ -126,7 +127,7 @@ class ProfileView extends StatelessWidget {
                         vertical: 6.h,
                       ),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        color: colorScheme.secondary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -135,7 +136,7 @@ class ProfileView extends StatelessWidget {
                           Icon(
                             Icons.phone_outlined,
                             size: 14.h,
-                            color: colorScheme.primary,
+                            color: colorScheme.secondary,
                           ),
                           SizedBox(width: 6.w),
                           Text(
@@ -144,7 +145,7 @@ class ProfileView extends StatelessWidget {
                                 .medium(context)
                                 .copyWith(
                                   fontSize: 12.sp,
-                                  color: colorScheme.primary,
+                                  color: colorScheme.secondary,
                                 ),
                           ),
                         ],
@@ -162,27 +163,27 @@ class ProfileView extends StatelessWidget {
               // Personal Information Section
               _buildSectionHeader(
                 context,
-                'Personal Information',
+                'personal_information'.tr(),
                 Icons.person,
               ),
               SizedBox(height: 12.h),
               _buildInfoCard(
                 context: context,
-                label: 'Employee Code',
+                label: 'employee_code'.tr(),
                 value: sampleUserData['employeeCode'],
                 icon: Icons.badge_outlined,
                 colorScheme: colorScheme,
               ),
               _buildInfoCard(
                 context: context,
-                label: 'Date of Birth',
+                label: 'date_of_birth'.tr(),
                 value: sampleUserData['dob'],
                 icon: Icons.calendar_today_outlined,
                 colorScheme: colorScheme,
               ),
               _buildInfoCard(
                 context: context,
-                label: 'Date of Join',
+                label: 'date_of_join'.tr(),
                 value: sampleUserData['dateOfJoin'],
                 icon: Icons.event_outlined,
                 colorScheme: colorScheme,
@@ -192,13 +193,13 @@ class ProfileView extends StatelessWidget {
               // Licence Information Section
               _buildSectionHeader(
                 context,
-                'Licence Information',
-                Icons.description,
+                'licence_information'.tr(),
+                Icons.description_outlined,
               ),
               SizedBox(height: 12.h),
               _buildInfoCard(
                 context: context,
-                label: 'Licence Number',
+                label: 'licence_number'.tr(),
                 value: sampleUserData['licenceNo'],
                 icon: Icons.numbers,
                 colorScheme: colorScheme,
@@ -206,11 +207,11 @@ class ProfileView extends StatelessWidget {
               SizedBox(height: 28.h),
 
               // Expiry Dates Section
-              _buildSectionHeader(context, 'Expiry Dates', Icons.schedule),
+              _buildSectionHeader(context, 'expiry_dates'.tr(), Icons.schedule),
               SizedBox(height: 12.h),
               _buildExpiryCard(
                 context: context,
-                label: 'GDL Expiry Date',
+                label: 'gdl_expiry'.tr(),
                 value: sampleUserData['gdlExpiryDate'],
                 icon: Icons.time_to_leave,
                 colorScheme: colorScheme,
@@ -220,7 +221,7 @@ class ProfileView extends StatelessWidget {
               ),
               _buildExpiryCard(
                 context: context,
-                label: 'West Port Pass Expiry',
+                label: 'west_port_expiry'.tr(),
                 value: sampleUserData['westPortPassExpiryDate'],
                 icon: Icons.location_city_outlined,
                 colorScheme: colorScheme,
@@ -230,7 +231,7 @@ class ProfileView extends StatelessWidget {
               ),
               _buildExpiryCard(
                 context: context,
-                label: 'North Port Pass Expiry',
+                label: 'north_port_expiry'.tr(),
                 value: sampleUserData['northPortPassExpiryDate'],
                 icon: Icons.location_city_outlined,
                 colorScheme: colorScheme,
@@ -257,10 +258,10 @@ class ProfileView extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(8.h),
           decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+            color: colorScheme.secondary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: colorScheme.primary, size: 18.h),
+          child: Icon(icon, color: colorScheme.secondary, size: 18.h),
         ),
         SizedBox(width: 12.w),
         Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 
 // Notification Model
@@ -150,14 +151,14 @@ class _NotificationViewState extends State<NotificationView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Notifications',
+              'notifications'.tr(),
               style: context.font
                   .semibold(context)
                   .copyWith(fontSize: 18.sp, color: colorScheme.onSurface),
             ),
             if (unreadCount > 0)
               Text(
-                '$unreadCount unread',
+                '$unreadCount ${'unread'.tr()}',
                 style: context.font
                     .regular(context)
                     .copyWith(
@@ -174,7 +175,7 @@ class _NotificationViewState extends State<NotificationView> {
               icon: Icon(Icons.more_vert, size: 20.h),
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  child: Text('Mark all as read'),
+                  child: Text('mark_all_as_read'.tr()),
                   onTap: () {
                     setState(() {
                       notifications = notifications
@@ -195,7 +196,7 @@ class _NotificationViewState extends State<NotificationView> {
                   },
                 ),
                 PopupMenuItem(
-                  child: Text('Clear all'),
+                  child: Text('clear_all'.tr()),
                   onTap: () {
                     setState(() {
                       notifications.clear();
@@ -241,25 +242,25 @@ class _NotificationViewState extends State<NotificationView> {
             width: 100.h,
             height: 100.h,
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
+              color: colorScheme.secondary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.notifications_none_outlined,
               size: 50.h,
-              color: colorScheme.primary.withValues(alpha: 0.5),
+              color: colorScheme.secondary.withValues(alpha: 0.5),
             ),
           ),
           SizedBox(height: 20.h),
           Text(
-            'No Notifications',
+            'no_notifications'.tr(),
             style: context.font
                 .semibold(context)
                 .copyWith(fontSize: 16.sp, color: colorScheme.onSurface),
           ),
           SizedBox(height: 8.h),
           Text(
-            'You\'re all caught up!',
+            'all_caught_up'.tr(),
             style: context.font
                 .regular(context)
                 .copyWith(

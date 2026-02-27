@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 
@@ -60,8 +61,8 @@ class _RegistrationSuccessViewState extends State<RegistrationSuccessView>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withValues(alpha: 0.05),
               colorScheme.secondary.withValues(alpha: 0.05),
+              colorScheme.tertiary.withValues(alpha: 0.05),
             ],
           ),
         ),
@@ -122,7 +123,7 @@ class _RegistrationSuccessViewState extends State<RegistrationSuccessView>
                 height: 40,
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    colorScheme.primary,
+                    colorScheme.secondary,
                   ),
                   strokeWidth: 2,
                 ),

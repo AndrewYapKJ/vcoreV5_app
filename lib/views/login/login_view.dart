@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/controllers/login_controller.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/widgets/theme_changer.dart';
 import 'package:vcore_v5_app/widgets/theme_mode.dart';
+import 'package:vcore_v5_app/widgets/custom_alert_dialog.dart';
+import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
 class LoginView extends ConsumerWidget {
   const LoginView({super.key});
@@ -20,6 +23,9 @@ class LoginView extends ConsumerWidget {
     ref.listen(loginControllerProvider, (prev, next) {
       if (next.success) {
         context.go('/jobs');
+      }
+      if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
+        CustomSnackBar.showError(context, message: next.errorMessage!);
       }
     });
 
@@ -46,7 +52,7 @@ class LoginView extends ConsumerWidget {
                       height: 120.h,
                     ),
                     Text(
-                      'Welcome Back',
+                      'welcome_back'.tr(),
                       style: context.font
                           .bold(context)
                           .copyWith(fontSize: 32.sp),
@@ -54,7 +60,7 @@ class LoginView extends ConsumerWidget {
                     ),
                     SizedBox(height: 8.h),
                     Text(
-                      'Sign in to your account',
+                      'sign_in_to_account'.tr(),
                       style: context.font.copyWith(
                         fontSize: 14.sp,
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -72,22 +78,24 @@ class LoginView extends ConsumerWidget {
                       // Email Field
                       _buildModernTextField(
                         context: context,
-                        label: 'Email Address',
+                        label: 'email_address'.tr(),
                         icon: Icons.email_outlined,
                         onChanged: notifier.setUserId,
-                        errorText: login.userId.isEmpty ? "Required" : null,
+                        errorText: login.userId.isEmpty
+                            ? 'required'.tr()
+                            : null,
                         colorScheme: colorScheme,
                       ),
                       SizedBox(height: 16.h),
                       // Password Field
                       _buildModernTextField(
                         context: context,
-                        label: 'Password',
+                        label: 'password'.tr(),
                         icon: Icons.lock_outline,
                         obscure: true,
                         onChanged: notifier.setPassword,
                         errorText: login.password.length < 6
-                            ? "Min 6 characters"
+                            ? 'min_6_characters'.tr()
                             : null,
                         colorScheme: colorScheme,
                       ),
@@ -105,52 +113,17 @@ class LoginView extends ConsumerWidget {
                             side: BorderSide(
                               color: colorScheme.outline.withValues(alpha: 0.5),
                             ),
-                            fillColor: MaterialStatePropertyAll(
-                              colorScheme.primary,
-                            ),
+                            // fillColor: MaterialStatePropertyAll(
+                            //   colorScheme.primary,
+                            // ),
                           ),
                           Text(
-                            'Remember me',
+                            'remember_me'.tr(),
                             style: context.font.copyWith(fontSize: 14.sp),
                           ),
                         ],
                       ),
                       SizedBox(height: 24.h),
-                      // Error Message
-                      if (login.errorMessage != null)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 10.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            border: Border.all(
-                              color: Colors.red.withValues(alpha: 0.3),
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red,
-                                size: 18.h,
-                              ),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  login.errorMessage!,
-                                  style: context.font.copyWith(
-                                    fontSize: 12.sp,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (login.errorMessage != null) SizedBox(height: 16.h),
                       // Login Button
                       SizedBox(
                         width: double.infinity,
@@ -175,7 +148,7 @@ class LoginView extends ConsumerWidget {
                                   strokeWidth: 2,
                                 )
                               : Text(
-                                  'Sign In',
+                                  'sign_in'.tr(),
                                   style: context.font
                                       .semibold(context)
                                       .copyWith(
@@ -189,18 +162,24 @@ class LoginView extends ConsumerWidget {
                       // Forgot Password Link
                       TextButton(
                         onPressed: () {
-                          // TODO: Implement forgot password
+                          CustomAlertDialog.show(
+                            context,
+                            title: 'forgot_password'.tr(),
+                            message: 'contact_admin'.tr(),
+                            closeButtonText: 'close'.tr(),
+                            icon: Icons.lock_reset_outlined,
+                          );
                         },
                         style: TextButton.styleFrom(
-                          foregroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.secondary,
                         ),
                         child: Text(
-                          'Forgot your password?',
+                          'forgot_password'.tr(),
                           style: context.font
                               .medium(context)
                               .copyWith(
                                 fontSize: 13.sp,
-                                color: colorScheme.primary,
+                                color: colorScheme.secondary,
                               ),
                         ),
                       ),
@@ -210,7 +189,7 @@ class LoginView extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Don't have an account? ",
+                            'dont_have_account'.tr(),
                             style: context.font
                                 .regular(context)
                                 .copyWith(fontSize: 13.sp),
@@ -218,16 +197,16 @@ class LoginView extends ConsumerWidget {
                           TextButton(
                             onPressed: () => context.push('/register'),
                             style: TextButton.styleFrom(
-                              foregroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.secondary,
                               padding: EdgeInsets.zero,
                             ),
                             child: Text(
-                              'Sign Up',
+                              'sign_up'.tr(),
                               style: context.font
                                   .semibold(context)
                                   .copyWith(
                                     fontSize: 13.sp,
-                                    color: colorScheme.primary,
+                                    color: colorScheme.secondary,
                                   ),
                             ),
                           ),
@@ -298,7 +277,7 @@ class LoginView extends ConsumerWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+              borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),

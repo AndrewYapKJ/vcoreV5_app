@@ -12,6 +12,7 @@ import '../views/bug/bug_report_view.dart';
 import '../views/leave/leave_application_view.dart';
 import '../views/payment/advance_payment_view.dart';
 import '../views/safety/safety_question_view.dart';
+import '../views/notification/notification_view.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -80,6 +81,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/safety-questions',
       builder: (context, state) => const SafetyQuestionView(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationView(),
     ),
   ],
 );

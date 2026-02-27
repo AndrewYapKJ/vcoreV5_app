@@ -66,42 +66,92 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
               color: colorScheme.onSurface,
             ),
             onPressed: () {
-              // TODO: Implement notifications
+              context.push('/notifications');
             },
           ),
         ],
       ),
       drawer: _buildDrawer(context, colorScheme),
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: widget.currentIndex,
-        selectedIconTheme: IconThemeData(size: 26),
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
-        selectedItemColor: colorScheme.primary,
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              context.go('/request');
-              break;
-            case 1:
-              context.go('/jobs');
-              break;
-            case 2:
-              context.go('/incentive-report');
-              break;
-          }
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline),
-            label: 'Requests',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Jobs'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.card_giftcard),
-            label: 'Incentive',
+      body: Stack(
+        children: [
+          widget.child,
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 30.h,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      colorScheme.primary.withValues(alpha: 0.1),
+                      colorScheme.primary.withValues(alpha: 0.3),
+                      colorScheme.primary.withValues(alpha: 0.6),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+      extendBody: true,
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
+        child: Container(
+          height: 60.h,
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceBright,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.5),
+                blurRadius: 25,
+                offset: const Offset(0, 8),
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildFloatingNavItem(
+                context: context,
+                icon: Icons.mail_outline,
+                label: 'Requests',
+                isActive: widget.currentIndex == 0,
+                onTap: () {
+                  context.go('/request');
+                },
+                colorScheme: colorScheme,
+              ),
+              _buildFloatingNavItem(
+                context: context,
+                icon: Icons.list_alt,
+                label: 'Jobs',
+                isActive: widget.currentIndex == 1,
+                onTap: () {
+                  context.go('/jobs');
+                },
+                colorScheme: colorScheme,
+              ),
+              _buildFloatingNavItem(
+                context: context,
+                icon: Icons.card_giftcard,
+                label: 'Incentive',
+                isActive: widget.currentIndex == 2,
+                onTap: () {
+                  context.go('/incentive-report');
+                },
+                colorScheme: colorScheme,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -112,25 +162,31 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
       child: SafeArea(
         child: Column(
           children: [
-            // Header with logo/user info
+            // Modern Header with gradient background
             Container(
-              padding: EdgeInsets.all(16.h),
+              padding: EdgeInsets.all(12.h),
+              margin: EdgeInsets.all(8.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    colorScheme.primary.withValues(alpha: 0.1),
-                    colorScheme.secondary.withValues(alpha: 0.1),
+                    colorScheme.primary.withValues(alpha: 0.15),
+                    colorScheme.primary.withValues(alpha: 0.05),
                   ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colorScheme.primary.withValues(alpha: 0.2),
+                  width: 1,
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 50.h,
-                    height: 50.h,
+                    width: 48.h,
+                    height: 48.h,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -138,38 +194,62 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                         end: Alignment.bottomRight,
                         colors: [colorScheme.primary, colorScheme.secondary],
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Icon(
                       Icons.person,
                       color: colorScheme.onPrimary,
-                      size: 28.h,
+                      size: 24.h,
                     ),
                   ),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 10.h),
                   Text(
-                    'Welcome Back',
-                    style: context.font.bold(context).copyWith(fontSize: 16.sp),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'admin@example.com',
+                    'Muhammad Hakimie',
                     style: context.font
-                        .regular(context)
+                        .bold(context)
                         .copyWith(
-                          fontSize: 12.sp,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontSize: 15.sp,
+                          color: colorScheme.onSurface,
                         ),
+                  ),
+                  SizedBox(height: 3.h),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.verified_user,
+                        size: 10.h,
+                        color: Colors.green,
+                      ),
+                      SizedBox(width: 3.w),
+                      Text(
+                        'Driver • ID: 0',
+                        style: context.font
+                            .regular(context)
+                            .copyWith(
+                              fontSize: 10.sp,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            Divider(height: 0),
-            SizedBox(height: 8.h),
+            SizedBox(height: 4.h),
             // Navigation items
             Expanded(
               child: ListView(
-                padding: EdgeInsets.symmetric(vertical: 8.h),
+                padding: EdgeInsets.symmetric(horizontal: 4.h, vertical: 2.h),
                 children: [
+                  _buildDrawerSectionHeader(context, 'Account', colorScheme),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.person_outline,
@@ -178,6 +258,23 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/profile');
                     },
+                    colorScheme: colorScheme,
+                  ),
+                  _buildDrawerItem(
+                    context: context,
+                    icon: Icons.settings_outlined,
+                    label: 'Settings',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/settings');
+                    },
+                    colorScheme: colorScheme,
+                  ),
+                  SizedBox(height: 6.h),
+                  _buildDrawerSectionHeader(
+                    context,
+                    'Application',
+                    colorScheme,
                   ),
                   _buildDrawerItem(
                     context: context,
@@ -187,6 +284,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/leave-application');
                     },
+                    colorScheme: colorScheme,
                   ),
                   _buildDrawerItem(
                     context: context,
@@ -196,7 +294,10 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/advance-payment');
                     },
+                    colorScheme: colorScheme,
                   ),
+                  SizedBox(height: 6.h),
+                  _buildDrawerSectionHeader(context, 'Support', colorScheme),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.security_outlined,
@@ -205,6 +306,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/safety-questions');
                     },
+                    colorScheme: colorScheme,
                   ),
                   _buildDrawerItem(
                     context: context,
@@ -214,16 +316,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/bug-report');
                     },
-                  ),
-                  Divider(indent: 16.w, endIndent: 16.w),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.settings_outlined,
-                    label: 'Settings',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/settings');
-                    },
+                    colorScheme: colorScheme,
                   ),
                   _buildDrawerItem(
                     context: context,
@@ -233,36 +326,37 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       // TODO: Implement help
                     },
+                    colorScheme: colorScheme,
                   ),
                 ],
               ),
             ),
-            Divider(height: 0),
             // Logout button
             Padding(
-              padding: EdgeInsets.all(12.h),
+              padding: EdgeInsets.all(8.h),
               child: SizedBox(
                 width: double.infinity,
-                height: 44.h,
-                child: OutlinedButton.icon(
+                height: 40.h,
+                child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    // TODO: Implement logout
                     context.go('/login');
                   },
-                  style: OutlinedButton.styleFrom(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.withValues(alpha: 0.1),
                     foregroundColor: Colors.red,
-                    side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                    elevation: 0,
+                    side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  icon: Icon(Icons.logout, size: 18.h),
+                  icon: Icon(Icons.logout, size: 16.h),
                   label: Text(
                     'Logout',
                     style: context.font
                         .semibold(context)
-                        .copyWith(fontSize: 14.sp),
+                        .copyWith(fontSize: 12.sp, color: Colors.red),
                   ),
                 ),
               ),
@@ -273,29 +367,121 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
     );
   }
 
+  Widget _buildDrawerSectionHeader(
+    BuildContext context,
+    String title,
+    ColorScheme colorScheme,
+  ) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(6.w, 4.h, 6.w, 6.h),
+      child: Text(
+        title,
+        style: context.font
+            .semibold(context)
+            .copyWith(
+              fontSize: 10.sp,
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
+              letterSpacing: 0.3,
+            ),
+      ),
+    );
+  }
+
   Widget _buildDrawerItem({
     required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    required ColorScheme colorScheme,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+      child: Container(
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32.h,
+                    height: 32.h,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 16.h, color: colorScheme.primary),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: context.font
+                          .medium(context)
+                          .copyWith(
+                            fontSize: 12.sp,
+                            color: colorScheme.onSurface,
+                          ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12.h,
+                    color: colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-    return ListTile(
-      leading: Icon(
-        icon,
-        size: 20.h,
-        color: colorScheme.onSurface.withValues(alpha: 0.7),
-      ),
-      title: Text(
-        label,
-        style: context.font
-            .regular(context)
-            .copyWith(fontSize: 14.sp, color: colorScheme.onSurface),
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+  Widget _buildFloatingNavItem({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    required ColorScheme colorScheme,
+  }) {
+    return GestureDetector(
       onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(6.h),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? colorScheme.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20.h,
+              color: isActive ? colorScheme.primary : Colors.grey,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          Text(
+            label,
+            style: context.font
+                .regular(context)
+                .copyWith(
+                  fontSize: 9.sp,
+                  color: isActive ? colorScheme.primary : Colors.grey,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }

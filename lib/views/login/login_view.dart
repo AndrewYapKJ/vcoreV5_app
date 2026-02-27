@@ -37,27 +37,14 @@ class LoginView extends ConsumerWidget {
             child: Column(
               children: [
                 // Top toolbar with theme controls
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(
-                      Icons.g_mobiledata,
-                      size: 32.h,
-                      color: colorScheme.primary,
-                    ),
-                    Row(
-                      children: [
-                        ThemeChanger(),
-                        SizedBox(width: 8.w),
-                        ThemeModeToggle(),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 40.h),
+
                 // Header Section
                 Column(
                   children: [
+                    Image.asset(
+                      'assets/images/Gussmann-logo-web.png',
+                      height: 120.h,
+                    ),
                     Text(
                       'Welcome Back',
                       style: context.font

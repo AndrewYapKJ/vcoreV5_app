@@ -124,5 +124,10 @@
   "redirecting_to_login": "Mengalihkan ke log masuk...",
   "back_to_login": "Kembali ke Log Masuk",
   "contact_admin": "Sila hubungi pentadbir untuk menetapkan semula kata laluan anda.",
-  "close": "Tutup"
+  "close": "Tutup",
+  "safety_check": "Semakan Keselamatan",
+  "no_button": "Tidak",
+  "yes_button": "Ya",
+  "select_vehicle": "Pilih Kenderaan",
+  "continue": "Teruskan"
 }

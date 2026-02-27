@@ -124,5 +124,10 @@
   "redirecting_to_login": "Redirecting to login...",
   "back_to_login": "Back to Login",
   "contact_admin": "Please contact the administrator to reset your password.",
-  "close": "Close"
+  "close": "Close",
+  "safety_check": "Safety Check",
+  "no_button": "No",
+  "yes_button": "Yes",
+  "select_vehicle": "Select Vehicle",
+  "continue": "Continue"
 }

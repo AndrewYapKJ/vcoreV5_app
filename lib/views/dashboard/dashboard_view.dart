@@ -107,7 +107,11 @@ class _DashboardStatCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
         child: Column(
           children: [
-            Icon(icon, size: 32, color: Theme.of(context).colorScheme.secondary),
+            Icon(
+              icon,
+              size: 32,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
             const SizedBox(height: 8),
             Text(value, style: Theme.of(context).textTheme.titleLarge),
             Text(label, style: Theme.of(context).textTheme.bodySmall),

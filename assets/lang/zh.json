@@ -124,5 +124,10 @@
   "redirecting_to_login": "正在重定向到登录...",
   "back_to_login": "返回登录",
   "contact_admin": "请联系管理员以重置您的密码。",
-  "close": "关闭"
+  "close": "关闭",
+  "safety_check": "安全检查",
+  "no_button": "否",
+  "yes_button": "是",
+  "select_vehicle": "选择车辆",
+  "continue": "继续"
 }

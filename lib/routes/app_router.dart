@@ -12,6 +12,8 @@ import '../views/bug/bug_report_view.dart';
 import '../views/leave/leave_application_view.dart';
 import '../views/payment/advance_payment_view.dart';
 import '../views/safety/safety_question_view.dart';
+import '../views/vehicle/select_vehicle_view.dart';
+import '../views/pti/pti_page_view.dart';
 import '../views/notification/notification_view.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -79,8 +81,17 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AdvancePaymentView(),
     ),
     GoRoute(
+      path: '/safety-question',
+      builder: (context, state) => const SafetyQuestionView(fromLogin: true),
+    ),
+    GoRoute(
+      path: '/select-vehicle',
+      builder: (context, state) => const SelectVehicleView(),
+    ),
+    GoRoute(path: '/pti', builder: (context, state) => const PTIPageView()),
+    GoRoute(
       path: '/safety-questions',
-      builder: (context, state) => const SafetyQuestionView(),
+      builder: (context, state) => const SafetyQuestionView(fromLogin: false),
     ),
     GoRoute(
       path: '/notifications',

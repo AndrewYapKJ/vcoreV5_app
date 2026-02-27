@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../services/auth_service.dart';
 import '../services/local_storage_service.dart';
+import '../services/storage/login_cache_service.dart';
 import '../models/user_model.dart';
 
 part 'login_controller.g.dart';
@@ -9,9 +10,13 @@ part 'login_controller.g.dart';
 class LoginController extends _$LoginController {
   final _authService = AuthService();
   final _storage = LocalStorageService();
+  late final LoginCacheService _loginCacheService;
 
   @override
-  LoginState build() => LoginState.initial();
+  LoginState build() {
+    _loginCacheService = LoginCacheService();
+    return LoginState.initial();
+  }
 
   Future<void> login() async {
     // if (!state.isValid) return;
@@ -29,6 +34,16 @@ class LoginController extends _$LoginController {
         await _storage.saveUserId(state.userId);
       }
 
+      // Initialize and cache login data
+      await _loginCacheService.initialize();
+      await _loginCacheService.cacheLoginData(
+        userEmail: state.userId.trim(),
+        userId: state.userId.trim(),
+        token:
+            'auth_token_${state.userId}', // Replace with actual token from auth service
+        userInfo: {'email': state.userId.trim(), 'userId': state.userId.trim()},
+      );
+
       state = state.copyWith(
         isLoading: false,
         success: true,
@@ -45,6 +60,13 @@ class LoginController extends _$LoginController {
   void setUserId(String v) => state = state.copyWith(userId: v);
   void setPassword(String v) => state = state.copyWith(password: v);
   void toggleRememberMe(bool v) => state = state.copyWith(rememberMe: v);
+
+  Future<void> logout() async {
+    // Clear cached login data
+    await _loginCacheService.clearCache();
+    // Reset state
+    state = LoginState.initial();
+  }
 }
 
 class LoginState {

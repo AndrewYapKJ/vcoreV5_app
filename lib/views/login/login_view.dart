@@ -22,7 +22,7 @@ class LoginView extends ConsumerWidget {
 
     ref.listen(loginControllerProvider, (prev, next) {
       if (next.success) {
-        context.go('/jobs');
+        context.go('/safety-question');
       }
       if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
         CustomSnackBar.showError(context, message: next.errorMessage!);

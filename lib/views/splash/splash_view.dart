@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../services/update_service.dart';
+import '../../services/storage/login_cache_service.dart';
 import '../../widgets/update_dialog.dart';
 
 class SplashView extends StatefulWidget {
@@ -42,6 +43,10 @@ class _SplashViewState extends State<SplashView> {
   }
 
   Future<void> _initializeApp() async {
+    // Initialize LoginCacheService
+    final loginCacheService = LoginCacheService();
+    await loginCacheService.initialize();
+
     // Wait a bit for splash animation
     await Future.delayed(const Duration(seconds: 1));
 
@@ -50,9 +55,15 @@ class _SplashViewState extends State<SplashView> {
     // Check for updates
     await _checkForUpdates();
 
-    // Navigate to login if still mounted
+    // Check if user has valid cached session
     if (mounted) {
-      context.go('/login');
+      if (loginCacheService.isCachedSessionValid()) {
+        // User has valid session, go to safety question
+        context.go('/safety-question');
+      } else {
+        // No valid session, go to login
+        context.go('/login');
+      }
     }
   }
 

@@ -58,6 +58,8 @@
   "no_notifications": "No Notifications",
   "all_caught_up": "You're all caught up!",
   "requests": "Requests",
+  "rest_request": "Rest Request",
+  "return_to_base": "Return to Base",
   "jobs": "Jobs",
   "incentive": "Incentive",
   "job_requests": "Job Requests",

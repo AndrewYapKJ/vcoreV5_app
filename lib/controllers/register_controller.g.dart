@@ -10,11 +10,11 @@ part of 'register_controller.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(RegisterController)
-const registerControllerProvider = RegisterControllerProvider._();
+final registerControllerProvider = RegisterControllerProvider._();
 
 final class RegisterControllerProvider
     extends $NotifierProvider<RegisterController, RegisterState> {
-  const RegisterControllerProvider._()
+  RegisterControllerProvider._()
     : super(
         from: null,
         argument: null,
@@ -49,7 +49,6 @@ abstract class _$RegisterController extends $Notifier<RegisterState> {
   @$mustCallSuper
   @override
   void runBuild() {
-    final created = build();
     final ref = this.ref as $Ref<RegisterState, RegisterState>;
     final element =
         ref.element
@@ -59,6 +58,6 @@ abstract class _$RegisterController extends $Notifier<RegisterState> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    element.handleCreate(ref, build);
   }
 }

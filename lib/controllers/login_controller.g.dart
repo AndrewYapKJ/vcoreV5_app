@@ -10,11 +10,11 @@ part of 'login_controller.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(LoginController)
-const loginControllerProvider = LoginControllerProvider._();
+final loginControllerProvider = LoginControllerProvider._();
 
 final class LoginControllerProvider
     extends $NotifierProvider<LoginController, LoginState> {
-  const LoginControllerProvider._()
+  LoginControllerProvider._()
     : super(
         from: null,
         argument: null,
@@ -41,14 +41,13 @@ final class LoginControllerProvider
   }
 }
 
-String _$loginControllerHash() => r'11580ab96fea88b221e7e172ab84d9446f2a1726';
+String _$loginControllerHash() => r'0076d0a1386cedcc102804f7fe4095031b739fbd';
 
 abstract class _$LoginController extends $Notifier<LoginState> {
   LoginState build();
   @$mustCallSuper
   @override
   void runBuild() {
-    final created = build();
     final ref = this.ref as $Ref<LoginState, LoginState>;
     final element =
         ref.element
@@ -58,6 +57,6 @@ abstract class _$LoginController extends $Notifier<LoginState> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    element.handleCreate(ref, build);
   }
 }

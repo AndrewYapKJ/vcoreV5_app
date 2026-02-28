@@ -10,6 +10,7 @@ import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 import 'controllers/theme_controller.dart';
+import 'themes/app_color_scheme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,7 +73,6 @@ void main() async {
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
-  static final List<FlexScheme> _schemes = FlexScheme.values;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeAsync = ref.watch(themeControllerProvider);
@@ -80,20 +80,19 @@ class MyApp extends ConsumerWidget {
     return themeAsync.when(
       loading: () => MaterialApp(home: SizedBox()),
       error: (_, _) => MaterialApp(home: Text("Theme error")),
-      data: (theme) => MaterialApp.router(
-        title: 'Logistics Driver App',
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
-        theme: FlexColorScheme.light(
-          scheme: _schemes[theme.schemeIndex],
-        ).toTheme,
-        darkTheme: FlexColorScheme.dark(
-          scheme: _schemes[theme.schemeIndex],
-        ).toTheme,
-        themeMode: theme.themeMode,
-        routerConfig: appRouter,
-      ),
+      data: (theme) {
+        final scheme = AppColorScheme.getSchemeByIndex(theme.schemeIndex);
+        return MaterialApp.router(
+          title: 'Logistics Driver App',
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+          theme: FlexColorScheme.light(colors: scheme.light).toTheme,
+          darkTheme: FlexColorScheme.dark(colors: scheme.dark).toTheme,
+          themeMode: theme.themeMode,
+          routerConfig: appRouter,
+        );
+      },
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
+import 'package:vcore_v5_app/widgets/custom_typeahead_field.dart';
 
 // Sample data for dropdowns
 final List<String> Function(BuildContext) getTrailerOptions = (context) => [
@@ -251,49 +251,108 @@ class _RequestViewState extends State<RequestView> {
                 ),
                 SizedBox(height: 20.h),
 
-                // Trailer Section - Enhanced with Typeahead
+                // Trailer Section - Enhanced with Custom Typeahead
                 _buildSectionLabel(
                   context,
                   'trailer'.tr(),
                   Icons.directions_car,
                 ),
                 SizedBox(height: 12.h),
-                _buildTypeaheadField(
-                  context: context,
+                CustomTypeAheadField<String>(
                   controller: trailerController,
-                  options: getTrailerOptions(context),
                   hint: 'Search trailer type',
-                  icon: Icons.local_shipping_outlined,
-                  onSelected: (value) {
-                    setState(() {
-                      selectedTrailer = value;
-                      trailerController.text = value;
-                    });
+                  prefixIcon: Icons.local_shipping_outlined,
+                  suggestionsCallback: (pattern) async {
+                    await Future.delayed(const Duration(milliseconds: 200));
+                    return getTrailerOptions(context)
+                        .where(
+                          (trailer) => trailer.toLowerCase().contains(
+                            pattern.toLowerCase(),
+                          ),
+                        )
+                        .toList();
                   },
+                  itemBuilder: (context, suggestion) {
+                    return Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6.h),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.check_circle_outline,
+                            color: colorScheme.primary,
+                            size: 16.h,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Text(
+                          suggestion,
+                          style: context.font
+                              .regular(context)
+                              .copyWith(fontSize: 14.sp),
+                        ),
+                      ],
+                    );
+                  },
+                  onSuggestionSelected: (suggestion) {
+                    setState(() => selectedTrailer = suggestion);
+                  },
+                  suggestionDisplay: (suggestion) => suggestion,
                   colorScheme: colorScheme,
+                  context: context,
+                  maxSuggestions: 10,
                 ),
                 SizedBox(height: 20.h),
 
-                // Vehicles Section - Enhanced with Typeahead
+                // Vehicles Section - Enhanced with Custom Typeahead
                 _buildSectionLabel(
                   context,
                   'vehicles'.tr(),
                   Icons.directions_bus,
                 ),
                 SizedBox(height: 12.h),
-                _buildTypeaheadField(
-                  context: context,
+                CustomTypeAheadField<String>(
                   controller: vehiclesController,
-                  options: getVehicleOptions(context),
                   hint: 'Search vehicle count',
-                  icon: Icons.directions_car_filled,
-                  onSelected: (value) {
-                    setState(() {
-                      selectedVehicles = value;
-                      vehiclesController.text = value;
-                    });
+                  prefixIcon: Icons.directions_car_filled,
+                  suggestionsCallback: (pattern) async {
+                    await Future.delayed(const Duration(milliseconds: 200));
+                    return getVehicleOptions(context)
+                        .where(
+                          (vehicle) => vehicle.toLowerCase().contains(
+                            pattern.toLowerCase(),
+                          ),
+                        )
+                        .toList();
                   },
+                  itemBuilder: (context, suggestion) {
+                    return Row(
+                      children: [
+                        Icon(
+                          Icons.directions_car,
+                          color: colorScheme.secondary,
+                          size: 18.h,
+                        ),
+                        SizedBox(width: 12.w),
+                        Text(
+                          suggestion,
+                          style: context.font
+                              .regular(context)
+                              .copyWith(fontSize: 14.sp),
+                        ),
+                      ],
+                    );
+                  },
+                  onSuggestionSelected: (suggestion) {
+                    setState(() => selectedVehicles = suggestion);
+                  },
+                  suggestionDisplay: (suggestion) => suggestion,
                   colorScheme: colorScheme,
+                  context: context,
+                  maxSuggestions: 10,
                 ),
                 SizedBox(height: 36.h),
 
@@ -390,7 +449,9 @@ class _RequestViewState extends State<RequestView> {
                     ),
                   ),
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(
+                  height: 36.h + MediaQuery.of(context).viewPadding.bottom,
+                ),
               ],
             ),
           ),
@@ -557,149 +618,6 @@ class _RequestViewState extends State<RequestView> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTypeaheadField({
-    required BuildContext context,
-    required TextEditingController controller,
-    required List<String> options,
-    required String hint,
-    required IconData icon,
-    required Function(String) onSelected,
-    required ColorScheme colorScheme,
-  }) {
-    return TypeAheadField<String?>(
-      textFieldConfiguration: TextFieldConfiguration(
-        controller: controller,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(
-            icon,
-            color: colorScheme.primary.withValues(alpha: 0.6),
-            size: 18.h,
-          ),
-          suffixIcon: controller.text.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    controller.clear();
-                    setState(() {
-                      if (hint.contains('trailer')) {
-                        selectedTrailer = null;
-                      } else {
-                        selectedVehicles = null;
-                      }
-                    });
-                  },
-                  child: Icon(
-                    Icons.clear,
-                    color: colorScheme.primary.withValues(alpha: 0.5),
-                    size: 18.h,
-                  ),
-                )
-              : Icon(
-                  Icons.arrow_drop_down,
-                  color: colorScheme.primary.withValues(alpha: 0.4),
-                  size: 20.h,
-                ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 16.w,
-            vertical: 14.h,
-          ),
-          isDense: true,
-          filled: true,
-          fillColor: colorScheme.surface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.15),
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.15),
-              width: 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: colorScheme.primary, width: 2),
-          ),
-          hintStyle: context.font
-              .regular(context)
-              .copyWith(
-                fontSize: 14.sp,
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-        ),
-        style: context.font.regular(context).copyWith(fontSize: 14.sp),
-        onChanged: (value) {
-          setState(() {});
-        },
-      ),
-
-      suggestionsCallback: (pattern) {
-        return options.where((option) {
-          return option.toLowerCase().contains(pattern.toLowerCase());
-        }).toList();
-      },
-      itemBuilder: (context, suggestion) {
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: colorScheme.outline.withValues(alpha: 0.1),
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(6.h),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.check_circle_outline,
-                  color: colorScheme.primary,
-                  size: 16.h,
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Text(
-                suggestion ?? "",
-                style: context.font
-                    .regular(context)
-                    .copyWith(fontSize: 14.sp, color: colorScheme.onSurface),
-              ),
-            ],
-          ),
-        );
-      },
-      noItemsFoundBuilder: (context) {
-        return Padding(
-          padding: EdgeInsets.all(12.h),
-          child: Text(
-            'No matches found',
-            style: context.font
-                .regular(context)
-                .copyWith(
-                  fontSize: 12.sp,
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-          ),
-        );
-      },
-      hideOnEmpty: false,
-      hideOnLoading: false,
-      debounceDuration: const Duration(milliseconds: 300),
-      onSuggestionSelected: (suggestion) {
-        controller.text = suggestion ?? "";
-        onSelected(suggestion ?? "");
-      },
     );
   }
 }

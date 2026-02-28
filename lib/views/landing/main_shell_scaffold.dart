@@ -82,7 +82,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
             right: 0,
             child: IgnorePointer(
               child: Container(
-                height: 30.h,
+                height: 30.h + MediaQuery.of(context).viewPadding.bottom,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -90,8 +90,8 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                     colors: [
                       Colors.transparent,
                       colorScheme.primary.withValues(alpha: 0.1),
-                      colorScheme.primary.withValues(alpha: 0.3),
-                      colorScheme.primary.withValues(alpha: 0.6),
+                      colorScheme.primary.withValues(alpha: 0.5),
+                      colorScheme.primary.withValues(alpha: 0.8),
                     ],
                   ),
                 ),
@@ -102,9 +102,13 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
       ),
       extendBody: true,
       bottomNavigationBar: Padding(
-        padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
+        padding: EdgeInsets.only(
+          left: 16.w,
+          right: 16.w,
+          bottom: MediaQuery.of(context).viewPadding.bottom,
+        ),
         child: Container(
-          height: 60.h,
+          height: 54.h,
           decoration: BoxDecoration(
             color: colorScheme.surfaceBright,
             borderRadius: BorderRadius.circular(30),
@@ -420,10 +424,10 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                     width: 32.h,
                     height: 32.h,
                     decoration: BoxDecoration(
-                      color: colorScheme.tertiary.withValues(alpha: 0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, size: 16.h, color: colorScheme.tertiary),
+                    child: Icon(icon, size: 16.h, color: colorScheme.primary),
                   ),
                   SizedBox(width: 8.w),
                   Expanded(

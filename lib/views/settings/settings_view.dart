@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
-import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/controllers/theme_controller.dart';
 import 'package:vcore_v5_app/services/localization_storage_service.dart';
+import 'package:vcore_v5_app/themes/app_color_scheme.dart';
 
 class SettingsView extends ConsumerWidget {
   const SettingsView({super.key});
-
-  static final List<FlexScheme> _schemes = FlexScheme.values;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -75,7 +73,7 @@ class SettingsView extends ConsumerWidget {
                 // Color Scheme Preview
                 _buildSectionTitle(context, 'scheme_colors'.tr()),
                 SizedBox(height: 12.h),
-                _buildColorPreview(colorScheme),
+                _buildColorPreview(context, colorScheme, theme),
                 SizedBox(height: 32.h),
               ],
             ),
@@ -227,12 +225,56 @@ class SettingsView extends ConsumerWidget {
               controller.changeScheme(value);
             }
           },
-          items: List.generate(_schemes.length, (i) {
+          items: List.generate(AppColorScheme.schemeCount, (i) {
+            final scheme = AppColorScheme.getSchemeByIndex(i);
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+            final colors = isDarkMode ? scheme.dark : scheme.light;
             return DropdownMenuItem(
               value: i,
-              child: Text(
-                _schemes[i].data.name,
-                style: context.font.regular(context).copyWith(fontSize: 14.sp),
+              child: Row(
+                children: [
+                  // Primary color square
+                  Container(
+                    width: 28.h,
+                    height: 28.h,
+                    decoration: BoxDecoration(
+                      color: colors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.primary.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  // Secondary color square
+                  Container(
+                    width: 28.h,
+                    height: 28.h,
+                    decoration: BoxDecoration(
+                      color: colors.secondary,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.secondary.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  // Scheme name
+                  Text(
+                    AppColorScheme.getSchemeNameByIndex(i),
+                    style: context.font
+                        .regular(context)
+                        .copyWith(fontSize: 14.sp),
+                  ),
+                ],
               ),
             );
           }),
@@ -241,7 +283,15 @@ class SettingsView extends ConsumerWidget {
     );
   }
 
-  Widget _buildColorPreview(ColorScheme colorScheme) {
+  Widget _buildColorPreview(
+    BuildContext context,
+    ColorScheme colorScheme,
+    dynamic theme,
+  ) {
+    final scheme = AppColorScheme.getSchemeByIndex(theme.schemeIndex);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final colors = isDarkMode ? scheme.dark : scheme.light;
+
     return GridView.count(
       crossAxisCount: 3,
       childAspectRatio: 1,
@@ -250,11 +300,14 @@ class SettingsView extends ConsumerWidget {
       crossAxisSpacing: 12.h,
       physics: NeverScrollableScrollPhysics(),
       children: [
-        _buildColorBox(label: 'Primary', color: colorScheme.primary),
-        _buildColorBox(label: 'Secondary', color: colorScheme.secondary),
-        _buildColorBox(label: 'Tertiary', color: colorScheme.tertiary),
+        _buildColorBox(label: 'Primary', color: colors.primary),
+        _buildColorBox(label: 'Secondary', color: colors.secondary),
+        _buildColorBox(label: 'Tertiary', color: colors.tertiary),
         _buildColorBox(label: 'Surface', color: colorScheme.surface),
-        _buildColorBox(label: 'Error', color: colorScheme.error),
+        _buildColorBox(
+          label: 'Error',
+          color: colors.error ?? colorScheme.error,
+        ),
         _buildColorBox(label: 'Outline', color: colorScheme.outline),
       ],
     );
@@ -263,31 +316,32 @@ class SettingsView extends ConsumerWidget {
   Widget _buildColorBox({required String label, required Color color}) {
     return Container(
       decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 40.h,
-            height: 40.h,
+            width: 50.h,
+            height: 50.h,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color,
               boxShadow: [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  spreadRadius: 2,
+                  color: color.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  spreadRadius: 3,
                 ),
               ],
             ),
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: 10.h),
           Text(
             label,
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
           ),
         ],
       ),

@@ -8,6 +8,6 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         
         // Setup remote config method channel
-        RemoteConfigMethodChannel.setupChannel(flutterEngine, this)
+        // RemoteConfigMethodChannel.setupChannel(flutterEngine, this)
     }
 }

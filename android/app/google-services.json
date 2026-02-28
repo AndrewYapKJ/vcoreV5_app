@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "430652937649",
+    "project_id": "vcorev5",
+    "storage_bucket": "vcorev5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:430652937649:android:43964176520022105cd990",
+        "android_client_info": {
+          "package_name": "com.gis.vcorev5"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLzrJyfmQplWpy8tMcu4VT5fvc_jhDaao"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

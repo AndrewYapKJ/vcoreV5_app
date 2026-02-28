@@ -22,6 +22,11 @@ final List<String> Function(BuildContext) getVehicleOptions = (context) => [
   '3 Vehicles',
   '4 Vehicles',
   '5+ Vehicles',
+  '1 Vehicle',
+  '2 Vehicles',
+  '3 Vehicles',
+  '4 Vehicles',
+  '5+ Vehicles',
 ];
 
 class RequestView extends StatefulWidget {
@@ -40,6 +45,11 @@ class _RequestViewState extends State<RequestView> {
   final trailerController = TextEditingController();
   final vehiclesController = TextEditingController();
   bool isLoading = false;
+  String? jobTypeError;
+  String? sizeError;
+  String? containerError;
+  String? trailerError;
+  String? vehicleError;
 
   @override
   void dispose() {
@@ -47,6 +57,24 @@ class _RequestViewState extends State<RequestView> {
     trailerController.dispose();
     vehiclesController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _scanQRCode() async {
+    try {
+      // TODO: Implement actual QR code scanning
+      // For now, show a placeholder dialog
+      CustomSnackBar.showInfo(context, message: 'QR Scanner - Coming Soon');
+
+      // Uncomment when QR scanner package is added:
+      // final result = await BarcodeScanner.scan();
+      // if (result.isValidFormat && result.formatNote != 'null') {
+      //   return result.rawContent;
+      // }
+      return null;
+    } catch (e) {
+      CustomSnackBar.showError(context, message: 'Error scanning QR code: $e');
+      return null;
+    }
   }
 
   @override
@@ -144,35 +172,59 @@ class _RequestViewState extends State<RequestView> {
                   Icons.work_outline,
                 ),
                 SizedBox(height: 8.h),
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildRadioOption(
-                        context: context,
-                        label: 'delivery'.tr(),
-                        value: 'delivery',
-                        icon: Icons.local_shipping_outlined,
-                        groupValue: selectedJobType,
-                        onChanged: (value) {
-                          setState(() => selectedJobType = value);
-                        },
-                        colorScheme: colorScheme,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildRadioOption(
+                            context: context,
+                            label: 'delivery'.tr(),
+                            value: 'delivery',
+                            icon: Icons.local_shipping_outlined,
+                            groupValue: selectedJobType,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedJobType = value;
+                                jobTypeError = null;
+                              });
+                            },
+                            colorScheme: colorScheme,
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: _buildRadioOption(
+                            context: context,
+                            label: 'collection'.tr(),
+                            value: 'collection',
+                            icon: Icons.inventory_2_outlined,
+                            groupValue: selectedJobType,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedJobType = value;
+                                jobTypeError = null;
+                              });
+                            },
+                            colorScheme: colorScheme,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: _buildRadioOption(
-                        context: context,
-                        label: 'collection'.tr(),
-                        value: 'collection',
-                        icon: Icons.inventory_2_outlined,
-                        groupValue: selectedJobType,
-                        onChanged: (value) {
-                          setState(() => selectedJobType = value);
-                        },
-                        colorScheme: colorScheme,
+                    if (jobTypeError != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                        child: Text(
+                          jobTypeError!,
+                          style: context.font
+                              .regular(context)
+                              .copyWith(
+                                fontSize: 12.sp,
+                                color: colorScheme.error,
+                              ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 SizedBox(height: 16.h),
@@ -184,52 +236,79 @@ class _RequestViewState extends State<RequestView> {
                   Icons.square_foot,
                 ),
                 SizedBox(height: 8.h),
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildRadioOption(
-                        context: context,
-                        label: '20\'',
-                        value: '20',
-                        icon: Icons.crop_din,
-                        groupValue: selectedSize,
-                        onChanged: (value) {
-                          setState(() => selectedSize = value);
-                        },
-                        colorScheme: colorScheme,
-                        compact: true,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildRadioOption(
+                            context: context,
+                            label: '20\'',
+                            value: '20',
+                            icon: Icons.crop_din,
+                            groupValue: selectedSize,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedSize = value;
+                                sizeError = null;
+                              });
+                            },
+                            colorScheme: colorScheme,
+                            compact: true,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: _buildRadioOption(
+                            context: context,
+                            label: '40\'',
+                            value: '40',
+                            icon: Icons.crop_din,
+                            groupValue: selectedSize,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedSize = value;
+                                sizeError = null;
+                              });
+                            },
+                            colorScheme: colorScheme,
+                            compact: true,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: _buildRadioOption(
+                            context: context,
+                            label: '60\'',
+                            value: '60',
+                            icon: Icons.crop_din,
+                            groupValue: selectedSize,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedSize = value;
+                                sizeError = null;
+                              });
+                            },
+                            colorScheme: colorScheme,
+                            compact: true,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _buildRadioOption(
-                        context: context,
-                        label: '40\'',
-                        value: '40',
-                        icon: Icons.crop_din,
-                        groupValue: selectedSize,
-                        onChanged: (value) {
-                          setState(() => selectedSize = value);
-                        },
-                        colorScheme: colorScheme,
-                        compact: true,
+                    if (sizeError != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                        child: Text(
+                          sizeError!,
+                          style: context.font
+                              .regular(context)
+                              .copyWith(
+                                fontSize: 12.sp,
+                                color: colorScheme.error,
+                              ),
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _buildRadioOption(
-                        context: context,
-                        label: '60\'',
-                        value: '60',
-                        icon: Icons.crop_din,
-                        groupValue: selectedSize,
-                        onChanged: (value) {
-                          setState(() => selectedSize = value);
-                        },
-                        colorScheme: colorScheme,
-                        compact: true,
-                      ),
-                    ),
                   ],
                 ),
                 SizedBox(height: 16.h),
@@ -241,13 +320,32 @@ class _RequestViewState extends State<RequestView> {
                   Icons.inventory,
                 ),
                 SizedBox(height: 12.h),
-                _buildModernTextField(
-                  context: context,
-                  controller: containerNoController,
-                  hint: 'Enter or scan container number',
-                  prefixIcon: Icons.inventory_2_outlined,
-                  suffixIcon: Icons.qr_code_2,
-                  colorScheme: colorScheme,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildModernTextField(
+                      context: context,
+                      controller: containerNoController,
+                      hint: 'Enter or scan container number',
+                      prefixIcon: Icons.inventory_2_outlined,
+                      suffixIcon: Icons.qr_code_2,
+                      colorScheme: colorScheme,
+                      onSuffixTap: _scanQRCode,
+                    ),
+                    if (containerError != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                        child: Text(
+                          containerError!,
+                          style: context.font
+                              .regular(context)
+                              .copyWith(
+                                fontSize: 12.sp,
+                                color: colorScheme.error,
+                              ),
+                        ),
+                      ),
+                  ],
                 ),
                 SizedBox(height: 20.h),
 
@@ -258,52 +356,77 @@ class _RequestViewState extends State<RequestView> {
                   Icons.directions_car,
                 ),
                 SizedBox(height: 12.h),
-                CustomTypeAheadField<String>(
-                  controller: trailerController,
-                  hint: 'Search trailer type',
-                  prefixIcon: Icons.local_shipping_outlined,
-                  suggestionsCallback: (pattern) async {
-                    await Future.delayed(const Duration(milliseconds: 200));
-                    return getTrailerOptions(context)
-                        .where(
-                          (trailer) => trailer.toLowerCase().contains(
-                            pattern.toLowerCase(),
-                          ),
-                        )
-                        .toList();
-                  },
-                  itemBuilder: (context, suggestion) {
-                    return Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(6.h),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.check_circle_outline,
-                            color: colorScheme.primary,
-                            size: 16.h,
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Text(
-                          suggestion,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomTypeAheadField<String>(
+                      controller: trailerController,
+                      hint: 'Search trailer type',
+                      prefixIcon: Icons.local_shipping_outlined,
+                      suffixIcon: Icons.qr_code_2,
+                      onQRScan: _scanQRCode,
+                      suggestionsCallback: (pattern) async {
+                        await Future.delayed(const Duration(milliseconds: 200));
+                        return getTrailerOptions(context)
+                            .where(
+                              (trailer) => trailer.toLowerCase().contains(
+                                pattern.toLowerCase(),
+                              ),
+                            )
+                            .toList();
+                      },
+                      itemBuilder: (context, suggestion) {
+                        return Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(6.h),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.check_circle_outline,
+                                color: colorScheme.primary,
+                                size: 16.h,
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Text(
+                              suggestion,
+                              style: context.font
+                                  .regular(context)
+                                  .copyWith(fontSize: 14.sp),
+                            ),
+                          ],
+                        );
+                      },
+                      onSuggestionSelected: (suggestion) {
+                        setState(() {
+                          selectedTrailer = suggestion;
+                          trailerError = null;
+                        });
+                      },
+                      suggestionDisplay: (suggestion) => suggestion,
+                      colorScheme: colorScheme,
+                      context: context,
+                      maxSuggestions: 5,
+                    ),
+                    if (trailerError != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                        child: Text(
+                          trailerError!,
                           style: context.font
                               .regular(context)
-                              .copyWith(fontSize: 14.sp),
+                              .copyWith(
+                                fontSize: 12.sp,
+                                color: colorScheme.error,
+                              ),
                         ),
-                      ],
-                    );
-                  },
-                  onSuggestionSelected: (suggestion) {
-                    setState(() => selectedTrailer = suggestion);
-                  },
-                  suggestionDisplay: (suggestion) => suggestion,
-                  colorScheme: colorScheme,
-                  context: context,
-                  maxSuggestions: 10,
+                      ),
+                  ],
                 ),
                 SizedBox(height: 20.h),
 
@@ -314,45 +437,66 @@ class _RequestViewState extends State<RequestView> {
                   Icons.directions_bus,
                 ),
                 SizedBox(height: 12.h),
-                CustomTypeAheadField<String>(
-                  controller: vehiclesController,
-                  hint: 'Search vehicle count',
-                  prefixIcon: Icons.directions_car_filled,
-                  suggestionsCallback: (pattern) async {
-                    await Future.delayed(const Duration(milliseconds: 200));
-                    return getVehicleOptions(context)
-                        .where(
-                          (vehicle) => vehicle.toLowerCase().contains(
-                            pattern.toLowerCase(),
-                          ),
-                        )
-                        .toList();
-                  },
-                  itemBuilder: (context, suggestion) {
-                    return Row(
-                      children: [
-                        Icon(
-                          Icons.directions_car,
-                          color: colorScheme.secondary,
-                          size: 18.h,
-                        ),
-                        SizedBox(width: 12.w),
-                        Text(
-                          suggestion,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomTypeAheadField<String>(
+                      controller: vehiclesController,
+                      hint: 'Search vehicle count',
+                      prefixIcon: Icons.directions_car_filled,
+                      suggestionsCallback: (pattern) async {
+                        await Future.delayed(const Duration(milliseconds: 200));
+                        return getVehicleOptions(context)
+                            .where(
+                              (vehicle) => vehicle.toLowerCase().contains(
+                                pattern.toLowerCase(),
+                              ),
+                            )
+                            .toList();
+                      },
+                      itemBuilder: (context, suggestion) {
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.directions_car,
+                              color: colorScheme.secondary,
+                              size: 18.h,
+                            ),
+                            SizedBox(width: 12.w),
+                            Text(
+                              suggestion,
+                              style: context.font
+                                  .regular(context)
+                                  .copyWith(fontSize: 14.sp),
+                            ),
+                          ],
+                        );
+                      },
+                      onSuggestionSelected: (suggestion) {
+                        setState(() {
+                          selectedVehicles = suggestion;
+                          vehicleError = null;
+                        });
+                      },
+                      suggestionDisplay: (suggestion) => suggestion,
+                      colorScheme: colorScheme,
+                      context: context,
+                      maxSuggestions: 5,
+                    ),
+                    if (vehicleError != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                        child: Text(
+                          vehicleError!,
                           style: context.font
                               .regular(context)
-                              .copyWith(fontSize: 14.sp),
+                              .copyWith(
+                                fontSize: 12.sp,
+                                color: colorScheme.error,
+                              ),
                         ),
-                      ],
-                    );
-                  },
-                  onSuggestionSelected: (suggestion) {
-                    setState(() => selectedVehicles = suggestion);
-                  },
-                  suggestionDisplay: (suggestion) => suggestion,
-                  colorScheme: colorScheme,
-                  context: context,
-                  maxSuggestions: 10,
+                      ),
+                  ],
                 ),
                 SizedBox(height: 36.h),
 
@@ -384,33 +528,73 @@ class _RequestViewState extends State<RequestView> {
                       onTap: isLoading
                           ? null
                           : () {
-                              if (selectedJobType != null &&
-                                  selectedSize != null &&
-                                  selectedTrailer != null &&
-                                  selectedVehicles != null &&
-                                  containerNoController.text.isNotEmpty) {
-                                setState(() => isLoading = true);
-                                Future.delayed(const Duration(seconds: 1), () {
-                                  if (mounted) {
-                                    setState(() => isLoading = false);
-                                    CustomSnackBar.showSuccess(
-                                      context,
-                                      message: 'request_submitted'.tr(),
-                                    );
-                                    containerNoController.clear();
-                                    setState(() {
-                                      selectedJobType = null;
-                                      selectedSize = null;
-                                      selectedTrailer = null;
-                                      selectedVehicles = null;
-                                    });
-                                  }
-                                });
-                              } else {
-                                CustomSnackBar.showWarning(
-                                  context,
-                                  message: 'Please fill all fields'.tr(),
+                              bool hasError = false;
+                              setState(() {
+                                jobTypeError = null;
+                                sizeError = null;
+                                containerError = null;
+                                trailerError = null;
+                                vehicleError = null;
+                              });
+
+                              if (selectedJobType == null) {
+                                setState(
+                                  () => jobTypeError = 'Job type is required',
                                 );
+                                hasError = true;
+                              }
+                              if (selectedSize == null) {
+                                setState(
+                                  () =>
+                                      sizeError = 'Container size is required',
+                                );
+                                hasError = true;
+                              }
+                              if (containerNoController.text.isEmpty) {
+                                setState(
+                                  () => containerError =
+                                      'Container number is required',
+                                );
+                                hasError = true;
+                              }
+                              if (selectedTrailer == null) {
+                                setState(
+                                  () =>
+                                      trailerError = 'Trailer type is required',
+                                );
+                                hasError = true;
+                              }
+                              if (selectedVehicles == null) {
+                                setState(
+                                  () => vehicleError =
+                                      'Vehicle count is required',
+                                );
+                                hasError = true;
+                              }
+
+                              if (!hasError) {
+                                if (selectedSize != null) {
+                                  setState(() => isLoading = true);
+                                  Future.delayed(
+                                    const Duration(seconds: 1),
+                                    () {
+                                      if (mounted) {
+                                        setState(() => isLoading = false);
+                                        CustomSnackBar.showSuccess(
+                                          context,
+                                          message: 'request_submitted'.tr(),
+                                        );
+                                        containerNoController.clear();
+                                        setState(() {
+                                          selectedJobType = null;
+                                          selectedSize = null;
+                                          selectedTrailer = null;
+                                          selectedVehicles = null;
+                                        });
+                                      }
+                                    },
+                                  );
+                                }
                               }
                             },
                       borderRadius: BorderRadius.circular(14),
@@ -490,6 +674,7 @@ class _RequestViewState extends State<RequestView> {
     required IconData prefixIcon,
     required IconData suffixIcon,
     required ColorScheme colorScheme,
+    VoidCallback? onSuffixTap,
   }) {
     return TextField(
       controller: controller,
@@ -500,10 +685,13 @@ class _RequestViewState extends State<RequestView> {
           color: colorScheme.primary.withValues(alpha: 0.6),
           size: 18.h,
         ),
-        suffixIcon: Icon(
-          suffixIcon,
-          color: colorScheme.primary.withValues(alpha: 0.7),
-          size: 18.h,
+        suffixIcon: GestureDetector(
+          onTap: onSuffixTap,
+          child: Icon(
+            suffixIcon,
+            color: colorScheme.primary.withValues(alpha: 0.7),
+            size: 18.h,
+          ),
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         isDense: true,
@@ -526,12 +714,23 @@ class _RequestViewState extends State<RequestView> {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.error, width: 2),
+        ),
         hintStyle: context.font
             .regular(context)
             .copyWith(
               fontSize: 14.sp,
               color: colorScheme.onSurface.withValues(alpha: 0.4),
             ),
+        errorStyle: context.font
+            .regular(context)
+            .copyWith(fontSize: 12.sp, color: colorScheme.error, height: 0.8),
       ),
       style: context.font.regular(context).copyWith(fontSize: 14.sp),
     );

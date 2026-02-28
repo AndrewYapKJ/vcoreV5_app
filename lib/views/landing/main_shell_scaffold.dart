@@ -288,20 +288,20 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.assignment_turned_in_outlined,
-                    label: 'leave_application'.tr(),
+                    label: 'rest_request'.tr(),
                     onTap: () {
                       Navigator.pop(context);
-                      context.push('/leave-application');
+                      context.push('/rest-request');
                     },
                     colorScheme: colorScheme,
                   ),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.payment,
-                    label: 'advance_payment_request'.tr(),
+                    label: 'return_to_base'.tr(),
                     onTap: () {
                       Navigator.pop(context);
-                      context.push('/advance-payment');
+                      context.push('/return-to-base');
                     },
                     colorScheme: colorScheme,
                   ),
@@ -325,21 +325,17 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                     context: context,
                     icon: Icons.bug_report_outlined,
                     label: 'bug_report'.tr(),
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/bug-report');
-                    },
+                    onTap: null,
                     colorScheme: colorScheme,
+                    isDisabled: true,
                   ),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.help_outline,
                     label: 'help_support'.tr(),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // TODO: Implement help
-                    },
+                    onTap: null,
                     colorScheme: colorScheme,
+                    isDisabled: true,
                   ),
                 ],
               ),
@@ -404,8 +400,9 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
     required BuildContext context,
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     required ColorScheme colorScheme,
+    bool isDisabled = false,
   }) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -414,7 +411,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: onTap,
+            onTap: isDisabled ? null : onTap,
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
@@ -424,10 +421,18 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                     width: 32.h,
                     height: 32.h,
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      color: isDisabled
+                          ? colorScheme.outline.withValues(alpha: 0.1)
+                          : colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, size: 16.h, color: colorScheme.primary),
+                    child: Icon(
+                      icon,
+                      size: 16.h,
+                      color: isDisabled
+                          ? colorScheme.outline.withValues(alpha: 0.4)
+                          : colorScheme.primary,
+                    ),
                   ),
                   SizedBox(width: 8.w),
                   Expanded(
@@ -437,14 +442,18 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                           .medium(context)
                           .copyWith(
                             fontSize: 12.sp,
-                            color: colorScheme.onSurface,
+                            color: isDisabled
+                                ? colorScheme.onSurface.withValues(alpha: 0.4)
+                                : colorScheme.onSurface,
                           ),
                     ),
                   ),
                   Icon(
                     Icons.arrow_forward_ios,
                     size: 12.h,
-                    color: colorScheme.onSurface.withValues(alpha: 0.3),
+                    color: isDisabled
+                        ? colorScheme.onSurface.withValues(alpha: 0.1)
+                        : colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                 ],
               ),

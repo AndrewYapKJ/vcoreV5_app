@@ -218,7 +218,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
                     SlideTransition(
                       position:
                           Tween<Offset>(
-                            begin: const Offset(0, 0.3),
+                            begin: const Offset(0, 2),
                             end: Offset.zero,
                           ).animate(
                             CurvedAnimation(

@@ -6,6 +6,7 @@ typedef SuggestionsCallback<T> = Future<List<T>> Function(String pattern);
 typedef ItemBuilder<T> = Widget Function(BuildContext context, T suggestion);
 typedef OnSuggestionSelected<T> = void Function(T suggestion);
 typedef SuggestionDisplay<T> = String Function(T suggestion);
+typedef OnQRScanned = Future<String?> Function();
 
 class CustomTypeAheadField<T> extends StatefulWidget {
   final TextEditingController controller;
@@ -13,6 +14,7 @@ class CustomTypeAheadField<T> extends StatefulWidget {
   final IconData prefixIcon;
   final IconData? suffixIcon;
   final VoidCallback? onSuffixTap;
+  final OnQRScanned? onQRScan;
   final SuggestionsCallback<T> suggestionsCallback;
   final ItemBuilder<T> itemBuilder;
   final OnSuggestionSelected<T> onSuggestionSelected;
@@ -24,22 +26,23 @@ class CustomTypeAheadField<T> extends StatefulWidget {
   final bool hideOnEmpty;
 
   const CustomTypeAheadField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.hint,
     required this.prefixIcon,
     this.suffixIcon,
     this.onSuffixTap,
+    this.onQRScan,
     required this.suggestionsCallback,
     required this.itemBuilder,
     required this.onSuggestionSelected,
     required this.suggestionDisplay,
     required this.colorScheme,
     required this.context,
-    this.maxSuggestions = 10,
+    this.maxSuggestions = 5,
     this.debounceDuration = const Duration(milliseconds: 300),
     this.hideOnEmpty = true,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomTypeAheadField<T>> createState() =>
@@ -48,17 +51,15 @@ class CustomTypeAheadField<T> extends StatefulWidget {
 
 class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
   late FocusNode _focusNode;
-  late LayerLink _layerLink;
-  OverlayEntry? _overlayEntry;
   List<T> _suggestions = [];
   bool _isLoading = false;
   int _selectedIndex = -1;
+  bool _showSuggestions = false;
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
-    _layerLink = LayerLink();
     _focusNode.addListener(_handleFocusChange);
     widget.controller.addListener(_onSearchChanged);
   }
@@ -68,16 +69,21 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
     _focusNode.removeListener(_handleFocusChange);
     _focusNode.dispose();
     widget.controller.removeListener(_onSearchChanged);
-    _overlayEntry?.remove();
     super.dispose();
   }
 
   void _handleFocusChange() {
     if (!_focusNode.hasFocus) {
-      _overlayEntry?.remove();
-      _overlayEntry = null;
+      // Clear everything when losing focus
+      setState(() {
+        _showSuggestions = false;
+        _suggestions = [];
+        _selectedIndex = -1;
+      });
     } else {
-      _showOverlay();
+      // Show suggestions when focused, even if empty
+      setState(() => _showSuggestions = true);
+      _searchSuggestions();
     }
   }
 
@@ -86,79 +92,33 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
       _selectedIndex = -1;
     });
 
-    if (widget.controller.text.isEmpty) {
-      _overlayEntry?.remove();
-      _overlayEntry = null;
-      return;
-    }
-
     _searchSuggestions();
   }
 
   Future<void> _searchSuggestions() async {
+    if (!mounted) return;
+
     setState(() => _isLoading = true);
 
     try {
       final suggestions = await widget.suggestionsCallback(
         widget.controller.text,
       );
+
+      if (!mounted) return;
+
       setState(() {
         _suggestions = suggestions.take(widget.maxSuggestions).toList();
         _isLoading = false;
+        _showSuggestions = true;
       });
-      _showOverlay();
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
 
-  void _showOverlay() {
-    if (_overlayEntry != null) {
-      _overlayEntry?.remove();
-    }
-
-    _overlayEntry = OverlayEntry(
-      builder: (context) {
-        return CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 55),
-          child: Material(
-            elevation: 16,
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.transparent,
-            child: Container(
-              width: 300.w,
-              decoration: BoxDecoration(
-                color: widget.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: widget.colorScheme.outline.withValues(alpha: 0.2),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 12,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              constraints: BoxConstraints(maxHeight: 300.h),
-              child: _buildSuggestionsList(),
-            ),
-          ),
-        );
-      },
-    );
-
-    Overlay.of(context).insert(_overlayEntry!);
-  }
-
   Widget _buildSuggestionsList() {
-    if (widget.hideOnEmpty && widget.controller.text.isEmpty) {
-      return SizedBox.shrink();
-    }
-
     if (_isLoading) {
       return Padding(
         padding: EdgeInsets.all(16.h),
@@ -190,11 +150,9 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
       );
     }
 
-    return ListView.builder(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      itemCount: _suggestions.length,
-      itemBuilder: (context, index) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(_suggestions.length, (index) {
         final suggestion = _suggestions[index];
         final isSelected = _selectedIndex == index;
 
@@ -204,11 +162,21 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
               : Colors.transparent,
           child: InkWell(
             onTap: () {
+              // Temporarily remove listener to prevent re-searching
+              widget.controller.removeListener(_onSearchChanged);
+
               widget.controller.text = widget.suggestionDisplay(suggestion);
               widget.onSuggestionSelected(suggestion);
+
+              // Re-add the listener
+              widget.controller.addListener(_onSearchChanged);
+
+              setState(() {
+                _showSuggestions = false;
+                _suggestions = [];
+                _selectedIndex = -1;
+              });
               _focusNode.unfocus();
-              _overlayEntry?.remove();
-              _overlayEntry = null;
             },
             onHover: (isHovering) {
               if (isHovering) {
@@ -221,69 +189,111 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
             ),
           ),
         );
-      },
+      }),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: TextField(
-        controller: widget.controller,
-        focusNode: _focusNode,
-        style: widget.context.font
-            .regular(widget.context)
-            .copyWith(fontSize: 14.sp),
-        decoration: InputDecoration(
-          hintText: widget.hint,
-          prefixIcon: Icon(
-            widget.prefixIcon,
-            color: widget.colorScheme.primary.withValues(alpha: 0.6),
-            size: 18.h,
-          ),
-          suffixIcon: widget.suffixIcon != null
-              ? GestureDetector(
-                  onTap: widget.onSuffixTap,
-                  child: Icon(
-                    widget.suffixIcon,
-                    color: widget.colorScheme.primary.withValues(alpha: 0.6),
-                    size: 18.h,
-                  ),
-                )
-              : null,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 16.w,
-            vertical: 14.h,
-          ),
-          isDense: true,
-          filled: true,
-          fillColor: widget.colorScheme.surface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: widget.colorScheme.outline.withValues(alpha: 0.15),
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: widget.colorScheme.outline.withValues(alpha: 0.15),
-              width: 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: widget.colorScheme.primary, width: 2),
-          ),
-          hintStyle: widget.context.font
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: widget.controller,
+          focusNode: _focusNode,
+          style: widget.context.font
               .regular(widget.context)
-              .copyWith(
-                fontSize: 14.sp,
-                color: widget.colorScheme.onSurface.withValues(alpha: 0.4),
+              .copyWith(fontSize: 14.sp),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            prefixIcon: Icon(
+              widget.prefixIcon,
+              color: widget.colorScheme.primary.withValues(alpha: 0.6),
+              size: 18.h,
+            ),
+            suffixIcon: widget.suffixIcon != null
+                ? GestureDetector(
+                    onTap: () async {
+                      if (widget.onQRScan != null) {
+                        final scannedValue = await widget.onQRScan!();
+                        if (scannedValue != null && mounted) {
+                          setState(() {
+                            widget.controller.text = scannedValue;
+                            _suggestions = [];
+                            _showSuggestions = false;
+                          });
+                        }
+                      } else if (widget.onSuffixTap != null) {
+                        widget.onSuffixTap!();
+                      }
+                    },
+                    child: Icon(
+                      widget.suffixIcon,
+                      color: widget.colorScheme.primary.withValues(alpha: 0.6),
+                      size: 18.h,
+                    ),
+                  )
+                : null,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 14.h,
+            ),
+            isDense: true,
+            filled: true,
+            fillColor: widget.colorScheme.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: widget.colorScheme.outline.withValues(alpha: 0.15),
               ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: widget.colorScheme.outline.withValues(alpha: 0.15),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: widget.colorScheme.primary,
+                width: 2,
+              ),
+            ),
+            hintStyle: widget.context.font
+                .regular(widget.context)
+                .copyWith(
+                  fontSize: 14.sp,
+                  color: widget.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+          ),
         ),
-      ),
+        if (_showSuggestions)
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(top: 4.h),
+            decoration: BoxDecoration(
+              color: widget.colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.colorScheme.outline.withValues(alpha: 0.2),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            constraints: BoxConstraints(maxHeight: 300.h),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: _buildSuggestionsList(),
+            ),
+          ),
+      ],
     );
   }
 }

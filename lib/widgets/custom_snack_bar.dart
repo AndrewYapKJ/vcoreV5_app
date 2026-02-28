@@ -47,30 +47,48 @@ class CustomSnackBar {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 20.h),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Text(
-                message,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13.sp,
-                ),
+        content: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: colorScheme.surface,
+            boxShadow: [
+              BoxShadow(
+                color: iconColor.withValues(alpha: 0.3),
+                blurRadius: 12,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            color: backgroundColor,
+            child: Row(
+              children: [
+                Icon(icon, color: iconColor, size: 20.h),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        backgroundColor: backgroundColor,
-        elevation: 0,
+        // backgroundColor: backgroundColor,
+        // elevation: 8,
         behavior: SnackBarBehavior.floating,
         margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        padding: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: iconColor.withValues(alpha: 0.2), width: 1),
+          side: BorderSide(color: iconColor.withValues(alpha: 0.5), width: 2),
         ),
         duration: duration,
       ),

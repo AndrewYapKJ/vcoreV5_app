@@ -5,6 +5,8 @@ import '../views/register/register_view.dart';
 import '../views/incentive/incentive_report_view.dart';
 import '../views/job/job_list_view.dart';
 import '../views/request/request_view.dart';
+import '../views/request/rest_request_view.dart';
+import '../views/request/return_to_base_view.dart';
 import '../views/landing/main_shell_scaffold.dart';
 import '../views/profile/profile_view.dart';
 import '../views/settings/settings_view.dart';
@@ -79,6 +81,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/advance-payment',
       builder: (context, state) => const AdvancePaymentView(),
+    ),
+    GoRoute(
+      path: '/rest-request',
+      builder: (context, state) => const RestRequestView(),
+    ),
+    GoRoute(
+      path: '/return-to-base',
+      builder: (context, state) => const ReturnToBaseView(),
     ),
     GoRoute(
       path: '/safety-question',

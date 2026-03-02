@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
+import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
 class SelectVehicleView extends StatefulWidget {
   const SelectVehicleView({super.key});
@@ -172,7 +173,9 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                               )
                             : null,
                         filled: true,
-                        fillColor: colorScheme.surface.withValues(alpha: 0.5),
+                        fillColor: colorScheme.surfaceContainerHigh.withValues(
+                          alpha: 1,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
@@ -214,12 +217,10 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                       child: InkWell(
                         onTap: () {
                           // TODO: Implement QR scan
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('QR scan coming soon'),
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: colorScheme.primary,
-                            ),
+                          CustomSnackBar.show(
+                            context,
+                            message: 'QR scan coming soon',
+                            type: SnackBarType.info,
                           );
                         },
                         borderRadius: BorderRadius.circular(12),
@@ -245,16 +246,37 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.directions_car_outlined,
-                            size: 48.h,
-                            color: colorScheme.onSurface.withValues(alpha: 0.3),
+                          Container(
+                            padding: EdgeInsets.all(28.w),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.primary.withOpacity(0.1),
+                                  colorScheme.primary.withOpacity(0.05),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.primary.withOpacity(0.08),
+                                  blurRadius: 16,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.directions_car_outlined,
+                              size: 64.sp,
+                              color: colorScheme.primary,
+                            ),
                           ),
                           SizedBox(height: 12.h),
                           Text(
                             'No vehicles found',
                             style: context.font
-                                .regular(context)
+                                .semibold(context)
                                 .copyWith(
                                   fontSize: 14.sp,
                                   color: colorScheme.onSurface.withValues(
@@ -284,13 +306,16 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                               duration: const Duration(milliseconds: 200),
                               padding: EdgeInsets.all(14.h),
                               decoration: BoxDecoration(
+                                color: isSelected
+                                    ? colorScheme.primary.withValues(alpha: 0.1)
+                                    : colorScheme.surfaceContainerHigh,
                                 gradient: isSelected
                                     ? LinearGradient(
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                         colors: [
                                           colorScheme.primary.withValues(
-                                            alpha: 0.1,
+                                            alpha: 0.01,
                                           ),
                                           colorScheme.primary.withValues(
                                             alpha: 0.05,
@@ -310,8 +335,8 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                         colors: [
-                                          colorScheme.surface,
-                                          colorScheme.surface,
+                                          colorScheme.surfaceContainerHigh,
+                                          colorScheme.surfaceContainerHigh,
                                         ],
                                       ),
                                 borderRadius: BorderRadius.circular(14),
@@ -343,7 +368,7 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                                     ? [
                                         BoxShadow(
                                           color: colorScheme.primary.withValues(
-                                            alpha: 0.2,
+                                            alpha: 0.05,
                                           ),
                                           blurRadius: 12,
                                           offset: const Offset(0, 4),

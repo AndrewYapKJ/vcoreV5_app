@@ -57,17 +57,11 @@ class _JobListViewState extends State<JobListView>
         ? const Color(0xFF3B82F6) // Blue for HMS
         : const Color(0xFFEC4899); // Pink for TMS
 
-    // Dark mode background colors with better contrast
-    final bgColor = isDark
-        ? const Color(0xFF1A1A2E) // Dark blue-black for better contrast
-        : Colors.white;
-
     return Column(
       children: [
         // Header with Search
         Container(
-          color: bgColor,
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 0.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [_buildSearchBar(context, colorScheme)],
@@ -75,13 +69,12 @@ class _JobListViewState extends State<JobListView>
         ),
         // Status & Job Type Row
         Container(
-          color: bgColor,
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           child: Row(
             children: [
               // Job Type Selector
-              _buildJobTypeSelectorBeautiful(accentColor, isHMS, isDark),
-              SizedBox(width: 12.w),
+              _buildJobTypeSelector(accentColor, isHMS, isDark),
+              SizedBox(width: 6.w),
               // Status Tabs with gradient background
               Expanded(
                 child: Container(
@@ -107,10 +100,7 @@ class _JobListViewState extends State<JobListView>
                       width: 1.5,
                     ),
                   ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 8.h,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 3.h),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -144,16 +134,12 @@ class _JobListViewState extends State<JobListView>
           ),
         ),
         // Job List
-        Expanded(child: _buildJobList(context, colorScheme)),
+        Expanded(child: SafeArea(child: _buildJobList(context, colorScheme))),
       ],
     );
   }
 
-  Widget _buildJobTypeSelectorBeautiful(
-    Color accentColor,
-    bool isHMS,
-    bool isDark,
-  ) {
+  Widget _buildJobTypeSelector(Color accentColor, bool isHMS, bool isDark) {
     return GestureDetector(
       onTap: () {
         final nextIndex = (_jobTypeTabController.index + 1) % 2;
@@ -162,7 +148,7 @@ class _JobListViewState extends State<JobListView>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
@@ -233,24 +219,18 @@ class _JobListViewState extends State<JobListView>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
         decoration: BoxDecoration(
           color: isActive ? accentColor : Colors.transparent,
           borderRadius: BorderRadius.circular(8.r),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w800,
-                color: isActive ? Colors.white : accentColor.withOpacity(0.6),
-                letterSpacing: 0.6,
-              ),
-            ),
-          ],
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w800,
+            color: isActive ? Colors.white : accentColor.withOpacity(0.6),
+          ),
         ),
       ),
     );
@@ -260,14 +240,12 @@ class _JobListViewState extends State<JobListView>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = isDark ? Colors.grey[400] : Colors.grey[500];
-    final bgColor = isDark ? colorScheme.surface : const Color(0xFFF0F0F5);
-    final borderColor = isDark ? Colors.grey[700] : Colors.grey[300];
 
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: borderColor ?? Colors.grey, width: 1),
+        // color: bgColor,
+        // borderRadius: BorderRadius.circular(12.r),
+        // border: Border.all(color: borderColor ?? Colors.grey, width: 1),
       ),
       child: TextField(
         controller: _searchController,
@@ -281,6 +259,9 @@ class _JobListViewState extends State<JobListView>
             fontSize: 13.sp,
             fontWeight: FontWeight.w500,
           ),
+          filled: true,
+          fillColor: colorScheme.surfaceContainerHigh,
+
           prefixIcon: Padding(
             padding: EdgeInsets.only(left: 12.w, right: 8.w),
             child: Icon(Icons.search_rounded, color: hintColor, size: 18.sp),
@@ -301,7 +282,22 @@ class _JobListViewState extends State<JobListView>
                   ),
                 )
               : null,
-          border: InputBorder.none,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: colorScheme.outline.withValues(alpha: 0.1),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: colorScheme.outline.withValues(alpha: 0.1),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+          ),
           contentPadding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 12.h),
         ),
         style: GoogleFonts.inter(
@@ -315,7 +311,6 @@ class _JobListViewState extends State<JobListView>
 
   Widget _buildJobList(BuildContext context, ColorScheme colorScheme) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1A1A2E) : Colors.grey[50];
     // Sample data - replace with actual data from provider
     final mockJobs = _getMockJobs(_selectedJobType, _selectedStatus);
 
@@ -328,7 +323,6 @@ class _JobListViewState extends State<JobListView>
 
     if (filteredJobs.isEmpty) {
       return Container(
-        color: bgColor,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -385,7 +379,6 @@ class _JobListViewState extends State<JobListView>
     }
 
     return Container(
-      color: bgColor,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         itemCount: filteredJobs.length,
@@ -408,28 +401,20 @@ class _JobListViewState extends State<JobListView>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = _getStatusColor(job['currentStatus']);
     final isHMS = job['type'] == 'HMS';
-    final cardBgColor = isDark
-        ? const Color(0xFF252E48) // Better contrast in dark mode
-        : Colors.white;
-    final cardTextColor = isDark ? Colors.white : Colors.black87;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 8.h),
       decoration: BoxDecoration(
-        color: cardBgColor,
+        color: colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(18.r),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? Colors.black : Colors.black).withOpacity(0.12),
-            blurRadius: 12,
+            color: isDark
+                ? Colors.grey.shade700.withOpacity(01)
+                : Colors.grey.shade400.withValues(alpha: 1),
+            blurRadius: 8,
             spreadRadius: 0,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: (isDark ? Colors.black : Colors.black).withOpacity(0.05),
-            blurRadius: 6,
-            spreadRadius: 1,
-            offset: const Offset(0, 1),
+            offset: const Offset(1, 2),
           ),
         ],
       ),
@@ -459,7 +444,7 @@ class _JobListViewState extends State<JobListView>
                     left: BorderSide(color: statusColor, width: 3.5),
                   ),
                 ),
-                padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 14.h),
+                padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 6.h),
                 child: Row(
                   children: [
                     Expanded(
@@ -473,7 +458,7 @@ class _JobListViewState extends State<JobListView>
                                 style: GoogleFonts.inter(
                                   fontSize: 14.sp,
                                   fontWeight: FontWeight.w900,
-                                  color: cardTextColor,
+
                                   letterSpacing: -0.2,
                                 ),
                               ),
@@ -590,7 +575,7 @@ class _JobListViewState extends State<JobListView>
               ),
               // Card Body
               Padding(
-                padding: EdgeInsets.fromLTRB(12.w, 14.h, 12.w, 12.h),
+                padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 8.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -601,18 +586,18 @@ class _JobListViewState extends State<JobListView>
                       value: job['pickupFrom'],
                       color: Colors.grey[700],
                     ),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 6.h),
                     _buildLocationRow(
                       icon: Icons.location_on,
                       label: 'To',
                       value: job['deliveryTo'],
                       color: statusColor,
                     ),
-                    SizedBox(height: 12.h),
+                    SizedBox(height: 8.h),
                     // Job Details Grid - Modern design
                     _buildJobDetailsGrid(job, isHMS),
-                    SizedBox(height: 12.h),
                     // Quick Actions Bar
+                    SizedBox(height: 6.h),
                     Row(
                       children: [
                         Expanded(
@@ -626,7 +611,7 @@ class _JobListViewState extends State<JobListView>
                             ),
                           ),
                         ),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 3.w),
                         Expanded(
                           child: _buildQuickActionButton(
                             icon: Icons.edit_outlined,
@@ -636,7 +621,7 @@ class _JobListViewState extends State<JobListView>
                                 _onJobCardLongPress(context, job, colorScheme),
                           ),
                         ),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 3.w),
                         Expanded(
                           child: _buildQuickActionButton(
                             icon: Icons.arrow_forward_ios_rounded,
@@ -684,7 +669,7 @@ class _JobListViewState extends State<JobListView>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: EdgeInsets.all(8.w),
+          padding: EdgeInsets.all(6.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -701,9 +686,9 @@ class _JobListViewState extends State<JobListView>
               ),
             ],
           ),
-          child: Icon(icon, size: 14.sp, color: color),
+          child: Icon(icon, size: 13.sp, color: color),
         ),
-        SizedBox(width: 10.w),
+        SizedBox(width: 8.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,21 +696,21 @@ class _JobListViewState extends State<JobListView>
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  fontSize: 10.sp,
+                  fontSize: 9.sp,
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                 ),
               ),
-              SizedBox(height: 4.h),
+              SizedBox(height: 2.h),
               Text(
                 value,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
-                  fontSize: 12.sp,
+                  fontSize: 11.sp,
                   fontWeight: FontWeight.w800,
-                  color: Colors.black87,
+                  // color: Colors.black87,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -757,12 +742,6 @@ class _JobListViewState extends State<JobListView>
               'icon': Icons.lock,
               'color': const Color(0xFFEC4899),
             },
-            {
-              'label': 'Size',
-              'value': job['size'],
-              'icon': Icons.straighten,
-              'color': const Color(0xFF14B8A6),
-            },
           ]
         : [
             {
@@ -783,93 +762,90 @@ class _JobListViewState extends State<JobListView>
               'icon': Icons.scale,
               'color': const Color(0xFFEC4899),
             },
-            {
-              'label': 'Rate',
-              'value': job['rate'],
-              'icon': Icons.local_offer,
-              'color': const Color(0xFF14B8A6),
-            },
           ];
 
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8.h,
-      crossAxisSpacing: 8.w,
-      childAspectRatio: 0.95,
+    return Wrap(
+      spacing: 4.w,
+      runSpacing: 5.h,
+      alignment: WrapAlignment.start,
       children: items.map((item) {
         final color = item['color'] as Color;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.1), color.withOpacity(0.04)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        return SizedBox(
+          width: (MediaQuery.of(context).size.width - 52.w) / 3,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withOpacity(0.1), color.withOpacity(0.04)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: color.withOpacity(0.25), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.1),
+                  blurRadius: 6,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: color.withOpacity(0.25), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.1),
-                blurRadius: 6,
-                spreadRadius: 0,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.all(6.w),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(6.w),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color.withOpacity(0.25), color.withOpacity(0.12)],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.15),
-                      blurRadius: 4,
-                      spreadRadius: 0,
+            padding: EdgeInsets.all(6.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(6.w),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        color.withOpacity(0.25),
+                        color.withOpacity(0.12),
+                      ],
                     ),
-                  ],
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.15),
+                        blurRadius: 4,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    item['icon'] as IconData,
+                    size: 15.sp,
+                    color: color,
+                  ),
                 ),
-                child: Icon(
-                  item['icon'] as IconData,
-                  size: 15.sp,
-                  color: color,
+                SizedBox(height: 6.h),
+                Text(
+                  item['label']! as String,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[700],
+                    letterSpacing: -0.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                item['label']! as String,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey[700],
-                  letterSpacing: -0.1,
+                SizedBox(height: 4.h),
+                Text(
+                  item['value']! as String,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                item['value']! as String,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                  letterSpacing: -0.2,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }).toList(),
@@ -901,11 +877,12 @@ class _JobListViewState extends State<JobListView>
           ],
         ),
         padding: EdgeInsets.symmetric(vertical: 7.h, horizontal: 6.w),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 16.sp, color: color),
-            SizedBox(height: 4.h),
+            SizedBox(width: 8.h),
             Text(
               label,
               style: GoogleFonts.inter(

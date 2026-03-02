@@ -50,7 +50,7 @@ class CustomSnackBar {
         content: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: colorScheme.surface,
+            color: colorScheme.surfaceContainerHigh,
             boxShadow: [
               BoxShadow(
                 color: iconColor.withValues(alpha: 0.3),

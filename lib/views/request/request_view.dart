@@ -696,7 +696,7 @@ class _RequestViewState extends State<RequestView> {
         contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         isDense: true,
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: colorScheme.surfaceContainerHigh,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
@@ -764,7 +764,7 @@ class _RequestViewState extends State<RequestView> {
                   ],
                 )
               : null,
-          color: isSelected ? null : colorScheme.surface,
+          color: isSelected ? null : colorScheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected

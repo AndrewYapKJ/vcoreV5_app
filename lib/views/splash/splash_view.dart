@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:vcore_v5_app/core/font_styling.dart';
 import '../../services/update_service.dart';
 import '../../services/storage/login_cache_service.dart';
 import '../../widgets/update_dialog.dart';
@@ -48,7 +49,7 @@ class _SplashViewState extends State<SplashView> {
     await loginCacheService.initialize();
 
     // Wait a bit for splash animation
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 3));
 
     if (!mounted) return;
 
@@ -262,6 +263,7 @@ class _SplashViewState extends State<SplashView> {
                 ],
               ),
             ),
+
             // Version info at bottom
             Positioned(
               bottom: 24,
@@ -269,23 +271,47 @@ class _SplashViewState extends State<SplashView> {
               right: 24,
               child: Column(
                 children: [
-                  Text(
-                    'v$_appVersion ($_buildNumber)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: colorScheme.onSurface.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '© ${DateTime.now().year} Gussmann Integrated Solution',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                    textAlign: TextAlign.center,
+                  // Text(
+                  //   '© ${DateTime.now().year} Gussmann Integrated Solution',
+                  //   style: TextStyle(
+                  //     fontSize: 11,
+                  //     fontWeight: FontWeight.w400,
+                  //     color: colorScheme.onSurface.withValues(alpha: 0.3),
+                  //   ),
+                  //   textAlign: TextAlign.center,
+                  // ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Powered By",
+                        style: context.font
+                            .medium(context)
+                            .copyWith(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                      ),
+                      Image.asset(
+                        "assets/images/ic_launcher_w_Bg.png",
+                        width: 25,
+                        height: 25,
+                        fit: BoxFit.cover,
+                      ),
+                      Text(
+                        "Gussmann Integrated Solution",
+                        style: context.font
+                            .medium(context)
+                            .copyWith(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                      ),
+                    ],
                   ),
                 ],
               ),

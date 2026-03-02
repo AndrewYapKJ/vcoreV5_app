@@ -86,7 +86,7 @@ class _RestRequestViewState extends State<RestRequestView> {
         Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
           decoration: BoxDecoration(
-            color: colorScheme.surface,
+            color: colorScheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: colorScheme.outline.withValues(alpha: 0.15),
@@ -164,7 +164,7 @@ class _RestRequestViewState extends State<RestRequestView> {
             ),
             isDense: true,
             filled: true,
-            fillColor: colorScheme.surface,
+            fillColor: colorScheme.surfaceContainerHigh,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(

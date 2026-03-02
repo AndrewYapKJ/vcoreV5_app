@@ -5,6 +5,7 @@ import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/core/app_constants.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class SafetyQuestionView extends ConsumerStatefulWidget {
@@ -51,10 +52,11 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF1A1A2E) : Colors.white,
 
       body: Stack(
         children: [
@@ -161,7 +163,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
                               .bold(context)
                               .copyWith(
                                 fontSize: 18.sp,
-                                color: Colors.black,
+                                color: isDark ? Colors.white : Colors.black,
                                 height: 1.1,
                               ),
                           textAlign: TextAlign.center,
@@ -183,6 +185,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
                         _buildBeautifulCard(
                           context,
                           colorScheme,
+                          isDark,
                           '🇬🇧 ENGLISH',
                           'By agreeing to this, you acknowledge and agree that you will adhere to the road safety regulations where ',
                           'you will ',
@@ -193,6 +196,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
                         _buildBeautifulCard(
                           context,
                           colorScheme,
+                          isDark,
                           '🇲🇾 MALAY',
                           'Anda bersetuju bahawa anda akan mematuhi peraturan keselamatan jalan raya dan ',
                           'anda ',
@@ -203,6 +207,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
                         _buildBeautifulCard(
                           context,
                           colorScheme,
+                          isDark,
                           '🇨🇳 CHINESE',
                           '您同意您将遵守道路安全法规，',
                           '',
@@ -337,11 +342,52 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
                       ? Icons.arrow_back_ios_new_rounded
                       : Icons.arrow_back_rounded,
                   size: Theme.of(context).appBarTheme.iconTheme?.size ?? 24,
-                  color: Colors.black,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               ),
             ),
           // Background gradient decoration
+          Positioned(
+            bottom: 24,
+            left: 24,
+            right: 24,
+            child: SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 4),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: _animationController,
+                      curve: const Interval(0.2, 1, curve: Curves.easeOut),
+                    ),
+                  ),
+              child: Column(
+                children: [
+                  Text(
+                    AppConstants.getVersionString(AppConstants.defaultVersion),
+                    style: context.font
+                        .medium(context)
+                        .copyWith(
+                          fontSize: 12,
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppConstants.getCopyrightText(DateTime.now().year),
+                    style: context.font
+                        .medium(context)
+                        .copyWith(
+                          fontSize: 12,
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -350,30 +396,45 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
   Widget _buildBeautifulCard(
     BuildContext context,
     ColorScheme colorScheme,
+    bool isDark,
     String language,
     String text1,
     String text2,
     String text3,
     String text4,
   ) {
+    final cardBg = isDark
+        ? const Color(0xFF252E48)
+        : Colors.red.shade50.withValues(alpha: 0.8);
+    final cardBorderColor = isDark
+        ? Colors.red.shade400.withValues(alpha: 0.3)
+        : Colors.red.shade200.withValues(alpha: 0.4);
+    final badgeBg = isDark
+        ? Colors.red.shade900.withValues(alpha: 0.4)
+        : LinearGradient(colors: [Colors.red.shade100, Colors.orange.shade100]);
+    final badgeText = isDark ? Colors.red.shade300 : Colors.red.shade700;
+    final textColor = isDark
+        ? Colors.white.withValues(alpha: 0.85)
+        : Colors.black.withValues(alpha: 0.75);
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.red.shade50.withValues(alpha: 0.8),
-            Colors.orange.shade50.withValues(alpha: 0.5),
-          ],
-        ),
+        color: isDark ? cardBg : null,
+        gradient: isDark
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.red.shade50.withValues(alpha: 0.8),
+                  Colors.orange.shade50.withValues(alpha: 0.5),
+                ],
+              ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.red.shade200.withValues(alpha: 0.4),
-          width: 1.5,
-        ),
+        border: Border.all(color: cardBorderColor, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.red.withValues(alpha: 0.08),
+            color: Colors.red.withValues(alpha: isDark ? 0.2 : 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -386,9 +447,8 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
           // Language badge
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red.shade100, Colors.orange.shade100],
-              ),
+              gradient: isDark ? null : badgeBg as LinearGradient?,
+              color: isDark ? Colors.red.shade900.withValues(alpha: 0.4) : null,
               borderRadius: BorderRadius.circular(12),
             ),
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
@@ -396,7 +456,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
               language,
               style: context.font
                   .bold(context)
-                  .copyWith(fontSize: 10.sp, color: Colors.red.shade700),
+                  .copyWith(fontSize: 10.sp, color: badgeText),
             ),
           ),
           SizedBox(height: 8.h),
@@ -407,31 +467,43 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
               text: text1,
               style: context.font
                   .regular(context)
-                  .copyWith(
-                    fontSize: 13.sp,
-                    color: Colors.black.withValues(alpha: 0.75),
-                  ),
+                  .copyWith(fontSize: 13.sp, color: textColor),
               children: [
                 if (text2.isNotEmpty)
                   TextSpan(
                     text: text2,
                     style: context.font
                         .regular(context)
-                        .copyWith(fontSize: 13.sp, color: Colors.red.shade600),
+                        .copyWith(
+                          fontSize: 13.sp,
+                          color: isDark
+                              ? Colors.red.shade400
+                              : Colors.red.shade600,
+                        ),
                   ),
                 if (text3.isNotEmpty)
                   TextSpan(
                     text: text3,
                     style: context.font
                         .bold(context)
-                        .copyWith(fontSize: 14.sp, color: Colors.red.shade700),
+                        .copyWith(
+                          fontSize: 14.sp,
+                          color: isDark
+                              ? Colors.red.shade300
+                              : Colors.red.shade700,
+                        ),
                   ),
                 if (text4.isNotEmpty)
                   TextSpan(
                     text: text4,
                     style: context.font
                         .regular(context)
-                        .copyWith(fontSize: 13.sp, color: Colors.red.shade600),
+                        .copyWith(
+                          fontSize: 13.sp,
+                          color: isDark
+                              ? Colors.red.shade400
+                              : Colors.red.shade600,
+                        ),
                   ),
               ],
             ),

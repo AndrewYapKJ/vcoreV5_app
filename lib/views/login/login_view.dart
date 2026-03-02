@@ -261,7 +261,7 @@ class LoginView extends ConsumerWidget {
             ),
             isDense: true,
             filled: true,
-            fillColor: colorScheme.surface,
+            fillColor: colorScheme.surfaceContainerHigh,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(

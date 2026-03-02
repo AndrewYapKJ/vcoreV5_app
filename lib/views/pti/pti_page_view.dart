@@ -262,9 +262,7 @@ class _PTIPageViewState extends State<PTIPageView> {
                     child: LinearProgressIndicator(
                       value: (_currentPage + 1) / ptiChecks.length,
                       minHeight: 6.h,
-                      backgroundColor: colorScheme.outline.withValues(
-                        alpha: 0.1,
-                      ),
+                      backgroundColor: colorScheme.surfaceContainerHigh,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         colorScheme.primary,
                       ),
@@ -332,7 +330,7 @@ class _PTIPageViewState extends State<PTIPageView> {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
       child: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Icon
             Container(
@@ -436,6 +434,7 @@ class _PTIPageViewState extends State<PTIPageView> {
             else
               // Final approval
               Container(
+                width: double.infinity,
                 padding: EdgeInsets.all(16.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -453,6 +452,9 @@ class _PTIPageViewState extends State<PTIPageView> {
                   ),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
                     Icon(Icons.verified, size: 40.h, color: Colors.green),
                     SizedBox(height: 12.h),

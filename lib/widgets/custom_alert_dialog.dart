@@ -25,7 +25,7 @@ class CustomAlertDialog {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colorScheme.surface,
+                color: colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(

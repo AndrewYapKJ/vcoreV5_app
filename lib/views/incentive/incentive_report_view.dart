@@ -70,7 +70,7 @@ class _IncentiveReportViewState extends State<IncentiveReportView>
   Widget _buildCustomTabBar(BuildContext context, ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: colorScheme.outline.withValues(alpha: 0.1),

@@ -240,7 +240,7 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
             ),
             isDense: true,
             filled: true,
-            fillColor: widget.colorScheme.surface,
+            fillColor: widget.colorScheme.surfaceContainerHigh,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
@@ -274,7 +274,7 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
             width: double.infinity,
             margin: EdgeInsets.only(top: 4.h),
             decoration: BoxDecoration(
-              color: widget.colorScheme.surface,
+              color: widget.colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: widget.colorScheme.outline.withValues(alpha: 0.2),

@@ -3,6 +3,7 @@ import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class MainShellScaffold extends StatefulWidget {
   final Widget child;
@@ -270,6 +271,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/profile');
                     },
+                    isDisabled: true,
                     colorScheme: colorScheme,
                   ),
                   _buildDrawerItem(
@@ -297,6 +299,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       context.push('/rest-request');
                     },
                     colorScheme: colorScheme,
+                    isDisabled: true,
                   ),
                   _buildDrawerItem(
                     context: context,
@@ -307,6 +310,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       context.push('/return-to-base');
                     },
                     colorScheme: colorScheme,
+                    isDisabled: true,
                   ),
                   SizedBox(height: 6.h),
                   _buildDrawerSectionHeader(
@@ -350,9 +354,12 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                 width: double.infinity,
                 height: 40.h,
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(context);
-                    context.go('/login');
+                    await LoginCacheService().clearCache();
+                    if (context.mounted) {
+                      context.go('/login');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.withValues(alpha: 0.1),

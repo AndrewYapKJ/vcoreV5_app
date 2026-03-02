@@ -322,74 +322,70 @@ class _JobListViewState extends State<JobListView>
     }).toList();
 
     if (filteredJobs.isEmpty) {
-      return Container(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(28.w),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      colorScheme.primary.withOpacity(0.1),
-                      colorScheme.primary.withOpacity(0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.08),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                    ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(28.w),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary.withOpacity(0.1),
+                    colorScheme.primary.withOpacity(0.05),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Icon(
-                  Icons.inbox_outlined,
-                  size: 64.sp,
-                  color: colorScheme.primary,
-                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withOpacity(0.08),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-              SizedBox(height: 24.h),
-              Text(
-                'No Jobs Yet',
-                style: GoogleFonts.inter(
-                  fontSize: 22.sp,
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : Colors.black87,
-                  letterSpacing: -0.3,
-                ),
+              child: Icon(
+                Icons.inbox_outlined,
+                size: 64.sp,
+                color: colorScheme.primary,
               ),
-              SizedBox(height: 10.h),
-              Text(
-                'Adjust your search or filters',
-                style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
+            ),
+            SizedBox(height: 24.h),
+            Text(
+              'No Jobs Yet',
+              style: GoogleFonts.inter(
+                fontSize: 22.sp,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: -0.3,
               ),
-            ],
-          ),
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              'Adjust your search or filters',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return Container(
-      child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-        itemCount: filteredJobs.length,
-        itemBuilder: (context, index) {
-          final job = filteredJobs[index];
-          return GestureDetector(
-            onLongPress: () => _onJobCardLongPress(context, job, colorScheme),
-            child: _buildJobCard(context, job, colorScheme),
-          );
-        },
-      ),
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      itemCount: filteredJobs.length,
+      itemBuilder: (context, index) {
+        final job = filteredJobs[index];
+        return GestureDetector(
+          onLongPress: () => _onJobCardLongPress(context, job, colorScheme),
+          child: _buildJobCard(context, job, colorScheme),
+        );
+      },
     );
   }
 
@@ -403,7 +399,7 @@ class _JobListViewState extends State<JobListView>
     final isHMS = job['type'] == 'HMS';
 
     return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
+      margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(18.r),

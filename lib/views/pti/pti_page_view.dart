@@ -6,7 +6,9 @@ import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class PTIPageView extends StatefulWidget {
-  const PTIPageView({super.key});
+  final Map<String, dynamic>? vehicleData;
+
+  const PTIPageView({super.key, this.vehicleData});
 
   @override
   State<PTIPageView> createState() => _PTIPageViewState();
@@ -15,6 +17,8 @@ class PTIPageView extends StatefulWidget {
 class _PTIPageViewState extends State<PTIPageView> {
   late PageController _pageController;
   int _currentPage = 0;
+  Map<String, dynamic>? _currentVehicle;
+  Map<String, dynamic>? _cachedVehicle;
 
   final List<Map<String, dynamic>> ptiChecks = [
     {
@@ -41,6 +45,37 @@ class _PTIPageViewState extends State<PTIPageView> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    _currentVehicle = widget.vehicleData;
+    _checkPTIStatus();
+  }
+
+  void _checkPTIStatus() async {
+    // Load cached vehicle
+    _cachedVehicle = await LoginCacheService().getCachedVehicleSelection();
+
+    // Load PTI status
+    final ptiStatus = await LoginCacheService().getCachedPTIStatus();
+
+    if (!mounted) return;
+
+    // Compare current vehicle with cached vehicle
+    final isSameVehicle =
+        _currentVehicle != null &&
+        _cachedVehicle != null &&
+        _currentVehicle!['vehicleId'] == _cachedVehicle!['vehicleId'];
+
+    // If same vehicle AND PTI is completed, show skip dialog
+    if (isSameVehicle &&
+        ptiStatus != null &&
+        ptiStatus['isCompleted'] == true) {
+      if (mounted) {
+        _showCompletionDialog();
+      }
+    }
+    // If different vehicle, clear PTI status and start fresh
+    // else if (!isSameVehicle && ptiStatus != null) {
+    //   await LoginCacheService().cachePTIStatus(isCompleted: false);
+    // }
   }
 
   @override
@@ -135,7 +170,16 @@ class _PTIPageViewState extends State<PTIPageView> {
                     height: 48.h,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // Cache PTI completion status
+                        // Cache the current vehicle and mark PTI as completed
+                        if (_currentVehicle != null) {
+                          await LoginCacheService().cacheVehicleSelection(
+                            vehicleId: _currentVehicle!['vehicleId'],
+                            vehicleName: _currentVehicle!['vehicleName'],
+                            plateNumber: _currentVehicle!['plateNumber'],
+                          );
+                        }
+
+                        // Mark PTI as completed
                         await LoginCacheService().cachePTIStatus(
                           isCompleted: true,
                         );
@@ -155,7 +199,7 @@ class _PTIPageViewState extends State<PTIPageView> {
                         ),
                       ),
                       child: Text(
-                        'Skip',
+                        'Continue',
                         style: context.font
                             .semibold(context)
                             .copyWith(
@@ -227,7 +271,7 @@ class _PTIPageViewState extends State<PTIPageView> {
           children: [
             // Progress indicator
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -248,15 +292,15 @@ class _PTIPageViewState extends State<PTIPageView> {
                       Text(
                         '${((_currentPage + 1) / ptiChecks.length * 100).toStringAsFixed(0)}%',
                         style: context.font
-                            .semibold(context)
+                            .bold(context)
                             .copyWith(
-                              fontSize: 12.sp,
+                              fontSize: 13.sp,
                               color: colorScheme.secondary,
                             ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 10.h),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(

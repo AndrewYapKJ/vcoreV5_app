@@ -348,7 +348,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
             ),
           // Background gradient decoration
           Positioned(
-            bottom: 24,
+            bottom: 24 + MediaQuery.of(context).viewPadding.bottom,
             left: 24,
             right: 24,
             child: SlideTransition(

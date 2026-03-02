@@ -67,10 +67,10 @@ dependencies:
   package_info_plus: ^9.0.0
   url_launcher: ^6.3.1
   flutter_typeahead: ^5.2.0
+  flutter_launcher_icons: ^0.14.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.4
   build_runner: ^2.4.6
   riverpod_generator: ^4.0.0+1
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -82,7 +82,13 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
-
+flutter_launcher_icons:
+  android: "ic_launcher_gis"
+  ios: true
+  image_path: "assets/images/ic_launcher_gis.png"
+  image_path_android: "assets/images/ic_launcher_gis.png"
+  image_path_ios: "assets/images/ic_launcher_gis.png"
+  remove_alpha_ios: true
 # The following section is specific to Flutter packages.
 flutter:
 

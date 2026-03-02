@@ -91,6 +91,8 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'select_vehicle'.tr(),
@@ -105,7 +107,7 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
           children: [
             // Header
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -118,7 +120,7 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                           color: colorScheme.onSurface,
                         ),
                   ),
-                  SizedBox(height: 6.h),
+
                   Text(
                     'Select the vehicle you want to use for today',
                     style: context.font
@@ -297,7 +299,7 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                             vehicle['id'] == lastSelectedVehicleId;
 
                         return Padding(
-                          padding: EdgeInsets.only(bottom: 12.h),
+                          padding: EdgeInsets.only(bottom: 7.h),
                           child: GestureDetector(
                             onTap: () {
                               setState(() => selectedVehicle = vehicle['id']);
@@ -540,18 +542,22 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
                           final selectedVehicleData = vehicles.firstWhere(
                             (v) => v['id'] == selectedVehicle,
                           );
-                          // Cache vehicle selection
-                          await LoginCacheService().cacheVehicleSelection(
-                            vehicleId: selectedVehicleData['id'] as String,
-                            vehicleName: selectedVehicleData['name'] as String,
-                            plateNumber:
-                                selectedVehicleData['plateNumber'] as String,
-                          );
 
-                          // Navigate to PTI
+                          // Pass vehicle data to PTI page without caching yet
                           if (mounted) {
                             // ignore: use_build_context_synchronously
-                            context.push('/pti');
+                            context.push(
+                              '/pti',
+                              extra: {
+                                'vehicleId':
+                                    selectedVehicleData['id'] as String,
+                                'vehicleName':
+                                    selectedVehicleData['name'] as String,
+                                'plateNumber':
+                                    selectedVehicleData['plateNumber']
+                                        as String,
+                              },
+                            );
                           }
                         }
                       : null,

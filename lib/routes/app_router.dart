@@ -98,7 +98,11 @@ final GoRouter appRouter = GoRouter(
       path: '/select-vehicle',
       builder: (context, state) => const SelectVehicleView(),
     ),
-    GoRoute(path: '/pti', builder: (context, state) => const PTIPageView()),
+    GoRoute(
+      path: '/pti',
+      builder: (context, state) =>
+          PTIPageView(vehicleData: state.extra as Map<String, dynamic>?),
+    ),
     GoRoute(
       path: '/safety-questions',
       builder: (context, state) => const SafetyQuestionView(fromLogin: false),

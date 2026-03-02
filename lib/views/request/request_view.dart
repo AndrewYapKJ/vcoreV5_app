@@ -87,91 +87,17 @@ class _RequestViewState extends State<RequestView> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             margin: EdgeInsets.only(bottom: 60.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // PM ID Section - Enhanced Card
-                // Container(
-                //   width: double.infinity,
-                //   padding: EdgeInsets.all(16.h),
-                //   decoration: BoxDecoration(
-                //     gradient: LinearGradient(
-                //       begin: Alignment.topLeft,
-                //       end: Alignment.bottomRight,
-                //       colors: [
-                //         colorScheme.primary.withValues(alpha: 0.08),
-                //         colorScheme.primary.withValues(alpha: 0.03),
-                //       ],
-                //     ),
-                //     borderRadius: BorderRadius.circular(16),
-                //     border: Border.all(
-                //       color: colorScheme.primary.withValues(alpha: 0.15),
-                //       width: 1,
-                //     ),
-                //   ),
-                //   child: Column(
-                //     crossAxisAlignment: CrossAxisAlignment.start,
-                //     children: [
-                //       Row(
-                //         children: [
-                //           Container(
-                //             padding: EdgeInsets.all(8.h),
-                //             decoration: BoxDecoration(
-                //               color: colorScheme.primary.withValues(alpha: 0.15),
-                //               borderRadius: BorderRadius.circular(10),
-                //             ),
-                //             child: Icon(
-                //               Icons.badge_outlined,
-                //               color: colorScheme.primary,
-                //               size: 20.h,
-                //             ),
-                //           ),
-                //           SizedBox(width: 12.w),
-                //           // Expanded(
-                //           //   child: Column(
-                //           //     crossAxisAlignment: CrossAxisAlignment.start,
-                //           //     children: [
-                //           //       Text(
-                //           //         'Your PM ID',
-                //           //         style: context.font
-                //           //             .regular(context)
-                //           //             .copyWith(
-                //           //               fontSize: 12.sp,
-                //           //               color: colorScheme.onSurface.withValues(
-                //           //                 alpha: 0.6,
-                //           //               ),
-                //           //               letterSpacing: 0.3,
-                //           //             ),
-                //           //       ),
-                //           //       SizedBox(height: 4.h),
-                //           //       Text(
-                //           //         'PM ID DUMMY',
-                //           //         style: context.font
-                //           //             .bold(context)
-                //           //             .copyWith(
-                //           //               fontSize: 18.sp,
-                //           //               color: colorScheme.primary,
-                //           //             ),
-                //           //       ),
-                //           //     ],
-                //           //   ),
-                //           // ),
-                //         ],
-                //       ),
-                //     ],
-                //   ),
-                // ),
-                // SizedBox(height: 28.h),
-
-                // Job Type Section - Enhanced
                 _buildSectionLabel(
                   context,
                   'job_type'.tr(),
                   Icons.work_outline,
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 4.h),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -235,7 +161,7 @@ class _RequestViewState extends State<RequestView> {
                   'container_size'.tr(),
                   Icons.square_foot,
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 4.h),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -319,7 +245,7 @@ class _RequestViewState extends State<RequestView> {
                   'container_number'.tr(),
                   Icons.inventory,
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 4.h),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -347,7 +273,7 @@ class _RequestViewState extends State<RequestView> {
                       ),
                   ],
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 16.h),
 
                 // Trailer Section - Enhanced with Custom Typeahead
                 _buildSectionLabel(
@@ -355,7 +281,7 @@ class _RequestViewState extends State<RequestView> {
                   'trailer'.tr(),
                   Icons.directions_car,
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 4.h),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -428,7 +354,7 @@ class _RequestViewState extends State<RequestView> {
                       ),
                   ],
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 16.h),
 
                 // Vehicles Section - Enhanced with Custom Typeahead
                 _buildSectionLabel(
@@ -436,7 +362,7 @@ class _RequestViewState extends State<RequestView> {
                   'vehicles'.tr(),
                   Icons.directions_bus,
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 4.h),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

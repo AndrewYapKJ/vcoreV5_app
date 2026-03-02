@@ -48,7 +48,10 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
       key: _scaffoldKey,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         backgroundColor: Colors.transparent,
+
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.menu, color: colorScheme.onSurface),

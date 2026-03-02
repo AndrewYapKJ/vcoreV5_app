@@ -83,7 +83,7 @@ class MyApp extends ConsumerWidget {
       data: (theme) {
         final scheme = AppColorScheme.getSchemeByIndex(theme.schemeIndex);
         return MaterialApp.router(
-          title: 'Logistics Driver App',
+          title: 'VCORE Driver App',
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,
           locale: context.locale,

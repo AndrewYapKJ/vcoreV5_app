@@ -205,35 +205,13 @@ class _SplashViewState extends State<SplashView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo/Icon
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          colorScheme.tertiary,
-                          colorScheme.tertiary.withValues(alpha: 0.7),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorScheme.tertiary.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.g_mobiledata,
-                      size: 50,
-                      color: colorScheme.onPrimary,
-                    ),
+                  Image.asset(
+                    'assets/images/ic_launcher_w_Bg.png',
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
                   ),
-                  const SizedBox(height: 32),
-                  // App title
+
                   Text(
                     'app_title'.tr(),
                     style: TextStyle(

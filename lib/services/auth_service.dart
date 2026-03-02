@@ -1,25 +1,89 @@
-import 'dart:async';
+import 'package:dio/dio.dart';
+import 'api/auth_api.dart';
+import 'storage/login_cache_service.dart';
+import '../models/login_response_model.dart';
 
 class AuthService {
-  Future<bool> login(String userId, String password) async {
-    await Future.delayed(Duration(seconds: 0)); // Fake API delay
+  final AuthApi _authApi = AuthApi();
+  final LoginCacheService _cacheService = LoginCacheService();
 
-    // Fake validation
-    if (userId == "" && password == "") {
-      return true;
+  /// Login with mobile and password
+  /// Returns LoginResponse with all driver details
+  Future<LoginResponse> login({
+    required String mobile,
+    required String password,
+  }) async {
+    try {
+      final response = await _authApi.login(mobile: mobile, password: password);
+
+      // Check if login was successful
+      if (response.result && response.error == null) {
+        // Cache the login data
+        await _cacheService.cacheLoginData(
+          driverId: response.driverId,
+          mobile: response.mobile,
+          name: response.name,
+          email: response.email,
+          imei: response.imei,
+        );
+
+        // Cache PTI status
+        await _cacheService.cachePTIStatus(isCompleted: response.ptiStatus);
+      }
+
+      return response;
+    } on DioException catch (e) {
+      // Return failed response with error
+      return LoginResponse(
+        result: false,
+        error: e.message ?? 'An error occurred during login',
+        critUpdate: false,
+        ptiStatus: false,
+      );
     }
-    return false;
   }
 
-  Future<bool> register(String email, String password, String fullName) async {
-    await Future.delayed(Duration(seconds: 2)); // Fake API delay
+  /// Register with mobile, password, name, and email
+  /// Returns LoginResponse with registration result
+  Future<LoginResponse> register({
+    required String mobile,
+    required String password,
+    required String name,
+    required String email,
+  }) async {
+    try {
+      final response = await _authApi.register(
+        mobile: mobile,
+        password: password,
+        name: name,
+        email: email,
+      );
 
-    // Fake validation - check if email already exists
-    if (email.isEmpty || password.isEmpty || fullName.isEmpty) {
-      return false;
+      // Check if registration was successful
+      if (response.result && response.error == null) {
+        // Cache the login data
+        await _cacheService.cacheLoginData(
+          driverId: response.driverId,
+          mobile: response.mobile,
+          name: response.name,
+          email: response.email,
+          imei: response.imei,
+        );
+      }
+
+      return response;
+    } on DioException catch (e) {
+      return LoginResponse(
+        result: false,
+        error: e.message ?? 'An error occurred during registration',
+        critUpdate: false,
+        ptiStatus: false,
+      );
     }
+  }
 
-    // Simulate successful registration
-    return true;
+  /// Logout - clear all cached data
+  Future<void> logout() async {
+    await _cacheService.clearCache();
   }
 }

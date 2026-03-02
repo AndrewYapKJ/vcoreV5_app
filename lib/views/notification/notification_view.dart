@@ -224,7 +224,7 @@ class _NotificationViewState extends State<NotificationView> {
                         colorScheme: colorScheme,
                         isLast: index == notifications.length - 1,
                       );
-                    }).toList(),
+                    }),
                     SizedBox(height: 24.h),
                   ],
                 ),

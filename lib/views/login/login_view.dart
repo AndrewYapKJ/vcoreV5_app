@@ -78,8 +78,8 @@ class LoginView extends ConsumerWidget {
                       // Email Field
                       _buildModernTextField(
                         context: context,
-                        label: 'email_address'.tr(),
-                        icon: Icons.email_outlined,
+                        label: 'mobile_number'.tr(),
+                        icon: Icons.phone_android_outlined,
                         onChanged: notifier.setUserId,
                         errorText: login.userId.isEmpty
                             ? 'required'.tr()
@@ -94,8 +94,8 @@ class LoginView extends ConsumerWidget {
                         icon: Icons.lock_outline,
                         obscure: true,
                         onChanged: notifier.setPassword,
-                        errorText: login.password.length < 6
-                            ? 'min_6_characters'.tr()
+                        errorText: login.password.length < 4
+                            ? 'min_4_characters'.tr()
                             : null,
                         colorScheme: colorScheme,
                       ),

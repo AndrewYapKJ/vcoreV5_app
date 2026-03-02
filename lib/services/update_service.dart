@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
@@ -81,7 +82,7 @@ class UpdateService {
       }
     } catch (e) {
       // Remote config check failed, continue to patch check
-      print('Remote config check failed: $e');
+      debugPrint('Remote config check failed: $e');
     }
 
     return UpdateCheckResult(type: UpdateType.none);
@@ -102,7 +103,7 @@ class UpdateService {
         return UpdateCheckResult(type: UpdateType.patchAvailable);
       }
     } catch (e) {
-      print('Shorebird patch check failed: $e');
+      debugPrint('Shorebird patch check failed: $e');
     }
 
     return UpdateCheckResult(type: UpdateType.none);
@@ -115,7 +116,7 @@ class UpdateService {
       await _shorebirdUpdater.update();
       return true;
     } catch (e) {
-      print('Failed to download patch: $e');
+      debugPrint('Failed to download patch: $e');
       return false;
     }
   }

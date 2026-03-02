@@ -7,8 +7,8 @@ import '../controllers/theme_controller.dart';
 class ThemeChanger extends ConsumerWidget {
   final List<FlexScheme> schemes;
   final List<String> schemeNames;
-  ThemeChanger({
-    Key? key,
+  const ThemeChanger({
+    super.key,
     this.schemes = FlexScheme.values,
     this.schemeNames = const [
       'Material',
@@ -46,7 +46,7 @@ class ThemeChanger extends ConsumerWidget {
       'Mauve',
       'Material Dark',
     ],
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,7 +54,7 @@ class ThemeChanger extends ConsumerWidget {
     final controller = ref.read(themeControllerProvider.notifier);
     return themeAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (theme) {
         return DropdownButtonHideUnderline(
           child: DropdownButton<int>(

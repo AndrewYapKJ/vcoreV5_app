@@ -271,7 +271,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       Navigator.pop(context);
                       context.push('/profile');
                     },
-                    isDisabled: true,
+                    //  isDisabled: true,
                     colorScheme: colorScheme,
                   ),
                   _buildDrawerItem(

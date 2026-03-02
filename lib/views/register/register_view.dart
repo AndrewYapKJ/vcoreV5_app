@@ -136,9 +136,9 @@ class RegisterView extends ConsumerWidget {
                           side: BorderSide(
                             color: colorScheme.outline.withValues(alpha: 0.5),
                           ),
-                          fillColor: MaterialStatePropertyAll(
-                            colorScheme.primary,
-                          ),
+                          // fillColor: MaterialStatePropertyAll(
+                          //   colorScheme.primary,
+                          // ),
                         ),
                         Expanded(
                           child: Text(

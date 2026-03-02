@@ -348,7 +348,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
             ),
           // Background gradient decoration
           Positioned(
-            bottom: 24 + MediaQuery.of(context).viewPadding.bottom,
+            bottom: MediaQuery.of(context).viewPadding.bottom,
             left: 24,
             right: 24,
             child: SlideTransition(
@@ -365,7 +365,7 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
               child: Column(
                 children: [
                   Text(
-                    AppConstants.getVersionString(AppConstants.defaultVersion),
+                    AppConstants.getVersionString(),
                     style: context.font
                         .medium(context)
                         .copyWith(

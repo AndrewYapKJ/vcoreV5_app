@@ -51,10 +51,10 @@ class _PTIPageViewState extends State<PTIPageView> {
 
   void _checkPTIStatus() async {
     // Load cached vehicle
-    _cachedVehicle = await LoginCacheService().getCachedVehicleSelection();
+    _cachedVehicle = LoginCacheService().getCachedVehicleSelection();
 
     // Load PTI status
-    final ptiStatus = await LoginCacheService().getCachedPTIStatus();
+    final ptiStatus = LoginCacheService().getCachedPTIStatus();
 
     if (!mounted) return;
 
@@ -472,7 +472,7 @@ class _PTIPageViewState extends State<PTIPageView> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               )
             else

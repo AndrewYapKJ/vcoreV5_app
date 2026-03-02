@@ -15,8 +15,12 @@ class SplashView extends StatefulWidget {
   State<SplashView> createState() => _SplashViewState();
 }
 
-class _SplashViewState extends State<SplashView> {
+class _SplashViewState extends State<SplashView>
+    with SingleTickerProviderStateMixin {
   final UpdateService _updateService = UpdateService();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
   bool _isCheckingUpdates = false;
   String _appVersion = '';
   int _buildNumber = 0;
@@ -24,8 +28,32 @@ class _SplashViewState extends State<SplashView> {
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
     _loadVersionInfo();
     _initializeApp();
+  }
+
+  void _setupAnimations() {
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadVersionInfo() async {
@@ -36,7 +64,7 @@ class _SplashViewState extends State<SplashView> {
         _buildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
       });
     } catch (e) {
-      print('Error loading version info: $e');
+      debugPrint('Error loading version info: $e');
       setState(() {
         _appVersion = '1.0.0';
         _buildNumber = 1;
@@ -50,7 +78,7 @@ class _SplashViewState extends State<SplashView> {
     await loginCacheService.initialize();
 
     // Wait a bit for splash animation
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
@@ -102,7 +130,7 @@ class _SplashViewState extends State<SplashView> {
           break;
       }
     } catch (e) {
-      print('Error checking for updates: $e');
+      debugPrint('Error checking for updates: $e');
       // Continue to app even if update check fails
     } finally {
       if (mounted) {
@@ -203,71 +231,162 @@ class _SplashViewState extends State<SplashView> {
             ),
             // Main content
             Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo/Icon
-                  Image.asset(
-                    'assets/images/ic_launcher_w_Bg.png',
-                    width: 200,
-                    height: 200,
-                    fit: BoxFit.cover,
-                  ),
-
-                  Text(
-                    'app_title'.tr(),
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  // Subtitle
-                  Text(
-                    'Welcome',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  // Loading indicator section
-                  const SizedBox(height: 48),
-                  if (_isCheckingUpdates)
-                    Column(
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              colorScheme.primary,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Logo/Icon with glow effect
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Glow background
+                          Container(
+                            width: 240,
+                            height: 240,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  colorScheme.primary.withValues(alpha: 0.15),
+                                  colorScheme.primary.withValues(alpha: 0),
+                                ],
+                              ),
                             ),
-                            strokeWidth: 2,
+                          ),
+                          // Logo
+                          Image.asset(
+                            'assets/images/ic_launcher_w_Bg.png',
+                            width: 180,
+                            height: 180,
+                            fit: BoxFit.cover,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 40.h),
+                      // App title
+                      Text(
+                        'app_title'.tr(),
+                        style: context.font
+                            .bold(context)
+                            .copyWith(
+                              fontSize: 32.sp,
+                              color: colorScheme.onSurface,
+                              letterSpacing: -0.5,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8.h),
+                      // Subtitle
+                      Text(
+                        'Welcome',
+                        style: context.font
+                            .regular(context)
+                            .copyWith(
+                              fontSize: 14.sp,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                              letterSpacing: 0.5,
+                            ),
+                      ),
+                      // Loading indicator section
+                      SizedBox(height: 48.h),
+                      if (_isCheckingUpdates)
+                        Column(
+                          children: [
+                            // Custom loading indicator
+                            SizedBox(
+                              width: 50.h,
+                              height: 50.h,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Outer rotating ring
+                                  Transform.rotate(
+                                    angle: _animationController.value * 4,
+                                    child: Container(
+                                      width: 50.h,
+                                      height: 50.h,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: colorScheme.primary.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Inner rotating dot
+                                  Transform.rotate(
+                                    angle: -_animationController.value * 6,
+                                    child: CustomPaint(
+                                      size: Size(50.h, 50.h),
+                                      painter: _RotatingDotPainter(
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  // Center indicator
+                                  CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      colorScheme.primary,
+                                    ),
+                                    strokeWidth: 2.5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Checking for updates...',
+                              style: context.font
+                                  .regular(context)
+                                  .copyWith(
+                                    fontSize: 12.sp,
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        )
+                      else
+                        // Version info at bottom
+                        Padding(
+                          padding: EdgeInsets.only(top: 24.h),
+                          child: Text(
+                            'v$_appVersion (Build $_buildNumber)',
+                            style: context.font
+                                .regular(context)
+                                .copyWith(
+                                  fontSize: 11.sp,
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'checking_updates'.tr(),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
-
-            // Version info at bottom
+            const SizedBox(height: 16),
+            Text(
+              'checking_updates'.tr(),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
             Positioned(
-              bottom: 24,
+              bottom: MediaQuery.of(context).viewPadding.bottom,
               left: 24,
               right: 24,
               child: Column(
@@ -321,5 +440,29 @@ class _SplashViewState extends State<SplashView> {
         ),
       ),
     );
+
+    // Version info at bottom
   }
+}
+
+class _RotatingDotPainter extends CustomPainter {
+  final Color color;
+
+  _RotatingDotPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final radius = size.width / 2;
+    const dotRadius = 4.0;
+
+    // Draw dot at top
+    canvas.drawCircle(Offset(radius, dotRadius), dotRadius, paint);
+  }
+
+  @override
+  bool shouldRepaint(_RotatingDotPainter oldDelegate) => true;
 }

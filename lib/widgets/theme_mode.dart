@@ -11,7 +11,7 @@ class ThemeModeToggle extends ConsumerWidget {
     final controller = ref.read(themeControllerProvider.notifier);
     return themeAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (theme) {
         final isDark = theme.themeMode == ThemeMode.dark;
         return IconButton(

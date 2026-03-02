@@ -12,26 +12,62 @@ class RegisterController extends _$RegisterController {
   RegisterState build() => RegisterState.initial();
 
   Future<void> register() async {
-    if (!state.isValid) return;
+    // Validate form before API call
+    if (!state.isValid) {
+      if (state.email.isEmpty) {
+        state = state.copyWith(errorMessage: 'Please enter your email');
+      } else if (!state.isValidEmail) {
+        state = state.copyWith(errorMessage: 'Please enter a valid email');
+      } else if (state.password.isEmpty) {
+        state = state.copyWith(errorMessage: 'Please enter a password');
+      } else if (!state.isPasswordStrong) {
+        state = state.copyWith(
+          errorMessage:
+              'Password must contain at least 1 uppercase letter and 1 number',
+        );
+      } else if (!state.isPasswordMatch) {
+        state = state.copyWith(errorMessage: 'Passwords do not match');
+      } else if (state.fullName.isEmpty) {
+        state = state.copyWith(errorMessage: 'Please enter your full name');
+      } else if (!state.agreeToTerms) {
+        state = state.copyWith(
+          errorMessage: 'Please agree to the terms and conditions',
+        );
+      }
+      return;
+    }
 
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, errorMessage: null);
 
-    final result = await _authService.register(
-      state.email.trim(),
-      state.password.trim(),
-      state.fullName.trim(),
-    );
-
-    if (result == true) {
-      state = state.copyWith(
-        isLoading: false,
-        success: true,
-        user: UserModel(state.email),
+    try {
+      final response = await _authService.register(
+        mobile: state.email.trim(), // Using email as mobile for now
+        password: state.password.trim(),
+        name: state.fullName.trim(),
+        email: state.email.trim(),
       );
-    } else {
+
+      if (response.result && response.error == null) {
+        // Create user model from API response
+        final user = UserModel(
+          response.mobile ?? state.email,
+          name: response.name,
+          email: response.email,
+          driverId: response.driverId,
+          imei: response.imei,
+        );
+
+        state = state.copyWith(isLoading: false, success: true, user: user);
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: response.errorMessage,
+        );
+      }
+    } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: "Registration failed. Please try again.",
+        errorMessage: 'Network error: Please check your connection',
       );
     }
   }

@@ -82,12 +82,12 @@ class _JobListViewState extends State<JobListView>
                     gradient: LinearGradient(
                       colors: isDark
                           ? [
-                              accentColor.withOpacity(0.25),
-                              accentColor.withOpacity(0.15),
+                              accentColor.withValues(alpha: 0.25),
+                              accentColor.withValues(alpha: 0.15),
                             ]
                           : [
-                              accentColor.withOpacity(0.1),
-                              accentColor.withOpacity(0.05),
+                              accentColor.withValues(alpha: 0.1),
+                              accentColor.withValues(alpha: 0.05),
                             ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -95,8 +95,8 @@ class _JobListViewState extends State<JobListView>
                     borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(
                       color: isDark
-                          ? accentColor.withOpacity(0.4)
-                          : accentColor.withOpacity(0.2),
+                          ? accentColor.withValues(alpha: 0.4)
+                          : accentColor.withValues(alpha: 0.2),
                       width: 1.5,
                     ),
                   ),
@@ -152,10 +152,13 @@ class _JobListViewState extends State<JobListView>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
-                ? [accentColor.withOpacity(0.3), accentColor.withOpacity(0.2)]
+                ? [
+                    accentColor.withValues(alpha: 0.3),
+                    accentColor.withValues(alpha: 0.2),
+                  ]
                 : [
-                    accentColor.withOpacity(0.15),
-                    accentColor.withOpacity(0.08),
+                    accentColor.withValues(alpha: 0.15),
+                    accentColor.withValues(alpha: 0.08),
                   ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -163,13 +166,13 @@ class _JobListViewState extends State<JobListView>
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
             color: isDark
-                ? accentColor.withOpacity(0.5)
-                : accentColor.withOpacity(0.3),
+                ? accentColor.withValues(alpha: 0.5)
+                : accentColor.withValues(alpha: 0.3),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: accentColor.withOpacity(isDark ? 0.2 : 0.1),
+              color: accentColor.withValues(alpha: isDark ? 0.2 : 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -182,8 +185,8 @@ class _JobListViewState extends State<JobListView>
               padding: EdgeInsets.all(4.w),
               decoration: BoxDecoration(
                 color: isDark
-                    ? accentColor.withOpacity(0.35)
-                    : accentColor.withOpacity(0.2),
+                    ? accentColor.withValues(alpha: 0.35)
+                    : accentColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6.r),
               ),
               child: Icon(
@@ -229,7 +232,7 @@ class _JobListViewState extends State<JobListView>
           style: GoogleFonts.inter(
             fontSize: 10.sp,
             fontWeight: FontWeight.w800,
-            color: isActive ? Colors.white : accentColor.withOpacity(0.6),
+            color: isActive ? Colors.white : accentColor.withValues(alpha: 0.6),
           ),
         ),
       ),
@@ -331,8 +334,8 @@ class _JobListViewState extends State<JobListView>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    colorScheme.primary.withOpacity(0.1),
-                    colorScheme.primary.withOpacity(0.05),
+                    colorScheme.primary.withValues(alpha: 0.1),
+                    colorScheme.primary.withValues(alpha: 0.05),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -340,7 +343,7 @@ class _JobListViewState extends State<JobListView>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withOpacity(0.08),
+                    color: colorScheme.primary.withValues(alpha: 0.08),
                     blurRadius: 16,
                     spreadRadius: 2,
                   ),
@@ -406,7 +409,7 @@ class _JobListViewState extends State<JobListView>
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.grey.shade700.withOpacity(01)
+                ? Colors.grey.shade700.withValues(alpha: 01)
                 : Colors.grey.shade400.withValues(alpha: 1),
             blurRadius: 8,
             spreadRadius: 0,
@@ -426,8 +429,8 @@ class _JobListViewState extends State<JobListView>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      statusColor.withOpacity(0.12),
-                      statusColor.withOpacity(0.04),
+                      statusColor.withValues(alpha: 0.12),
+                      statusColor.withValues(alpha: 0.04),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -480,10 +483,10 @@ class _JobListViewState extends State<JobListView>
                                     color: isHMS
                                         ? const Color(
                                             0xFF1976D2,
-                                          ).withOpacity(0.2)
+                                          ).withValues(alpha: 0.2)
                                         : const Color(
                                             0xFFC2185B,
-                                          ).withOpacity(0.2),
+                                          ).withValues(alpha: 0.2),
                                     width: 1,
                                   ),
                                 ),
@@ -525,13 +528,13 @@ class _JobListViewState extends State<JobListView>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            statusColor.withOpacity(0.15),
-                            statusColor.withOpacity(0.08),
+                            statusColor.withValues(alpha: 0.15),
+                            statusColor.withValues(alpha: 0.08),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
-                          color: statusColor.withOpacity(0.3),
+                          color: statusColor.withValues(alpha: 0.3),
                           width: 1.5,
                         ),
                       ),
@@ -546,7 +549,7 @@ class _JobListViewState extends State<JobListView>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: statusColor.withOpacity(0.4),
+                                  color: statusColor.withValues(alpha: 0.4),
                                   blurRadius: 6,
                                   spreadRadius: 1,
                                 ),
@@ -669,14 +672,14 @@ class _JobListViewState extends State<JobListView>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                (color ?? Colors.grey).withOpacity(0.15),
-                (color ?? Colors.grey).withOpacity(0.05),
+                (color ?? Colors.grey).withValues(alpha: 0.15),
+                (color ?? Colors.grey).withValues(alpha: 0.05),
               ],
             ),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: (color ?? Colors.grey).withOpacity(0.1),
+                color: (color ?? Colors.grey).withValues(alpha: 0.1),
                 blurRadius: 4,
                 spreadRadius: 0,
               ),
@@ -771,15 +774,21 @@ class _JobListViewState extends State<JobListView>
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.1), color.withOpacity(0.04)],
+                colors: [
+                  color.withValues(alpha: 0.1),
+                  color.withValues(alpha: 0.04),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: color.withOpacity(0.25), width: 1.2),
+              border: Border.all(
+                color: color.withValues(alpha: 0.25),
+                width: 1.2,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   blurRadius: 6,
                   spreadRadius: 0,
                   offset: const Offset(0, 2),
@@ -795,14 +804,14 @@ class _JobListViewState extends State<JobListView>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        color.withOpacity(0.25),
-                        color.withOpacity(0.12),
+                        color.withValues(alpha: 0.25),
+                        color.withValues(alpha: 0.12),
                       ],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.15),
+                        color: color.withValues(alpha: 0.15),
                         blurRadius: 4,
                         spreadRadius: 0,
                       ),
@@ -860,13 +869,16 @@ class _JobListViewState extends State<JobListView>
         duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.12), color.withOpacity(0.05)],
+            colors: [
+              color.withValues(alpha: 0.12),
+              color.withValues(alpha: 0.05),
+            ],
           ),
           borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: color.withOpacity(0.3), width: 1),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),

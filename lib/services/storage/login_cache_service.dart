@@ -27,30 +27,57 @@ class LoginCacheService {
   }
 
   /// Cache login data
+  /// Can accept either new API format or legacy format
   Future<void> cacheLoginData({
-    required String userEmail,
-    required String userId,
-    required String token,
-    required Map<String, dynamic> userInfo,
+    String? userEmail,
+    String? userId,
+    String? token,
+    Map<String, dynamic>? userInfo,
+    // New API response fields
+    String? driverId,
+    String? mobile,
+    String? name,
+    String? email,
+    String? imei,
   }) async {
     try {
       final now = DateTime.now();
       final dateString = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
       await _prefs.setString(_loginDateKey, dateString);
-      await _prefs.setString(_tokenKey, token);
-      await _prefs.setString(_userInfoKey, jsonEncode(userInfo));
+
+      // Use provided token or generate default
+      final finalToken = token ?? 'auth_token_${mobile ?? userId}';
+      await _prefs.setString(_tokenKey, finalToken);
+
+      // Build user info from available data
+      final finalUserInfo =
+          userInfo ??
+          {
+            'email': email ?? userEmail,
+            'userId': userId ?? mobile,
+            'mobile': mobile,
+            'driverId': driverId,
+            'name': name,
+            'imei': imei,
+          };
+
+      await _prefs.setString(_userInfoKey, jsonEncode(finalUserInfo));
       await _prefs.setString(
         _loginDataKey,
         jsonEncode({
-          'email': userEmail,
-          'userId': userId,
-          'token': token,
+          'email': email ?? userEmail,
+          'userId': userId ?? mobile,
+          'mobile': mobile,
+          'driverId': driverId,
+          'token': finalToken,
           'loginTime': dateString,
         }),
       );
 
-      debugPrint('Login data cached - User: $userEmail, Time: $dateString');
+      debugPrint(
+        'Login data cached - User: ${email ?? userEmail}, Time: $dateString',
+      );
     } catch (e) {
       debugPrint('Error caching login data: $e');
     }

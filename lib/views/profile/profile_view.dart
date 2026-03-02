@@ -1,27 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/providers/user_provider.dart';
+import 'package:intl/intl.dart';
 
-// Sample user data
-const Map<String, dynamic> sampleUserData = {
-  'name': 'Muhammad Hakimie',
-  'mobile': '0138686055',
-  'employeeCode': '0',
-  'dob': '2 Apr 2026',
-  'licenceNo': '851206136217',
-  'dateOfJoin': '2 Apr 2026',
-  'gdlExpiryDate': 'Invalid Date',
-  'westPortPassExpiryDate': 'Invalid Date',
-  'northPortPassExpiryDate': 'Invalid Date',
-};
+/// Format date string to dd MMM YYYY format
+String formatDateToDdMmmYyyy(String? dateString) {
+  if (dateString == null || dateString.isEmpty || dateString == 'N/A') {
+    return 'N/A';
+  }
+  try {
+    // Try to parse multiple date formats
+    DateTime? date;
 
-class ProfileView extends StatelessWidget {
+    // Try ISO format first (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+    if (dateString.contains('-')) {
+      date = DateTime.tryParse(dateString);
+    }
+
+    // If parsing fails, try other common formats
+    if (date == null) {
+      final formats = [
+        'dd/MM/yyyy',
+        'MM/dd/yyyy',
+        'dd-MM-yyyy',
+        'MM-dd-yyyy',
+        'yyyy/MM/dd',
+      ];
+
+      for (var format in formats) {
+        try {
+          date = DateFormat(format).parse(dateString);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+
+    if (date == null) {
+      return dateString; // Return original if parsing fails
+    }
+
+    return DateFormat('dd MMM yyyy').format(date);
+  } catch (e) {
+    return dateString; // Return original if any error
+  }
+}
+
+class ProfileView extends ConsumerWidget {
   const ProfileView({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final user = ref.watch(currentUserProvider);
+
+    // Use user data from API or fallback to sample data
+    final userData = <String, dynamic>{
+      'name': user?.name ?? 'Guest User',
+      'mobile': user?.mobile ?? '0000000000',
+      'employeeCode': user?.driverId ?? 'N/A',
+      'dob': formatDateToDdMmmYyyy(user?.driverDob),
+      'licenceNo': user?.driverLicenceNo ?? 'N/A',
+      'dateOfJoin': formatDateToDdMmmYyyy(user?.driverDateOfJoining),
+      'gdlExpiryDate': user?.gdlExpiryDate ?? 'Invalid Date',
+      'westPortPassExpiryDate': user?.westPortExpiry ?? 'Invalid Date',
+      'northPortPassExpiryDate': user?.northPortExpiry ?? 'Invalid Date',
+    };
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -93,7 +141,7 @@ class ProfileView extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          sampleUserData['name']
+                          (userData['name'] ?? '')
                               .toString()
                               .split(' ')
                               .map((e) => e[0])
@@ -111,7 +159,7 @@ class ProfileView extends StatelessWidget {
                     SizedBox(height: 16.h),
                     // Name
                     Text(
-                      sampleUserData['name'],
+                      userData['name'],
                       style: context.font
                           .bold(context)
                           .copyWith(
@@ -140,7 +188,7 @@ class ProfileView extends StatelessWidget {
                           ),
                           SizedBox(width: 6.w),
                           Text(
-                            sampleUserData['mobile'],
+                            userData['mobile'],
                             style: context.font
                                 .medium(context)
                                 .copyWith(
@@ -157,7 +205,7 @@ class ProfileView extends StatelessWidget {
               SizedBox(height: 28.h),
 
               // Quick Info Cards
-              _buildQuickInfoRow(context, colorScheme),
+              _buildQuickInfoRow(context, colorScheme, userData),
               SizedBox(height: 28.h),
 
               // Personal Information Section
@@ -170,21 +218,21 @@ class ProfileView extends StatelessWidget {
               _buildInfoCard(
                 context: context,
                 label: 'employee_code'.tr(),
-                value: sampleUserData['employeeCode'],
+                value: userData['employeeCode'],
                 icon: Icons.badge_outlined,
                 colorScheme: colorScheme,
               ),
               _buildInfoCard(
                 context: context,
                 label: 'date_of_birth'.tr(),
-                value: sampleUserData['dob'],
+                value: userData['dob'],
                 icon: Icons.calendar_today_outlined,
                 colorScheme: colorScheme,
               ),
               _buildInfoCard(
                 context: context,
                 label: 'date_of_join'.tr(),
-                value: sampleUserData['dateOfJoin'],
+                value: userData['dateOfJoin'],
                 icon: Icons.event_outlined,
                 colorScheme: colorScheme,
               ),
@@ -200,7 +248,7 @@ class ProfileView extends StatelessWidget {
               _buildInfoCard(
                 context: context,
                 label: 'licence_number'.tr(),
-                value: sampleUserData['licenceNo'],
+                value: userData['licenceNo'],
                 icon: Icons.numbers,
                 colorScheme: colorScheme,
               ),
@@ -212,30 +260,36 @@ class ProfileView extends StatelessWidget {
               _buildExpiryCard(
                 context: context,
                 label: 'gdl_expiry'.tr(),
-                value: sampleUserData['gdlExpiryDate'],
+                value: userData['gdlExpiryDate'].isNotEmpty
+                    ? userData['gdlExpiryDate']
+                    : 'Invalid Date',
                 icon: Icons.time_to_leave,
                 colorScheme: colorScheme,
-                isExpired: sampleUserData['gdlExpiryDate'].toString().contains(
+                isExpired: userData['gdlExpiryDate'].toString().contains(
                   'Invalid',
                 ),
               ),
               _buildExpiryCard(
                 context: context,
                 label: 'west_port_expiry'.tr(),
-                value: sampleUserData['westPortPassExpiryDate'],
+                value: userData['westPortPassExpiryDate'].isNotEmpty
+                    ? userData['westPortPassExpiryDate']
+                    : 'Invalid Date',
                 icon: Icons.location_city_outlined,
                 colorScheme: colorScheme,
-                isExpired: sampleUserData['westPortPassExpiryDate']
+                isExpired: userData['westPortPassExpiryDate']
                     .toString()
                     .contains('Invalid'),
               ),
               _buildExpiryCard(
                 context: context,
                 label: 'north_port_expiry'.tr(),
-                value: sampleUserData['northPortPassExpiryDate'],
+                value: userData['northPortPassExpiryDate'].isNotEmpty
+                    ? userData['northPortPassExpiryDate']
+                    : 'Invalid Date',
                 icon: Icons.location_city_outlined,
                 colorScheme: colorScheme,
-                isExpired: sampleUserData['northPortPassExpiryDate']
+                isExpired: userData['northPortPassExpiryDate']
                     .toString()
                     .contains('Invalid'),
               ),
@@ -347,7 +401,7 @@ class ProfileView extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isExpired
+          colors: isExpired || value.contains('Invalid')
               ? [
                   Colors.red.withValues(alpha: 0.08),
                   Colors.red.withValues(alpha: 0.03),
@@ -359,7 +413,7 @@ class ProfileView extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isExpired
+          color: isExpired || value.contains('Invalid')
               ? Colors.red.withValues(alpha: 0.2)
               : Colors.green.withValues(alpha: 0.2),
           width: 1,
@@ -370,14 +424,18 @@ class ProfileView extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(8.h),
             decoration: BoxDecoration(
-              color: isExpired
+              color: isExpired || value.contains('Invalid')
                   ? Colors.red.withValues(alpha: 0.15)
                   : Colors.green.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              isExpired ? Icons.error_outline : Icons.check_circle_outline,
-              color: isExpired ? Colors.red : Colors.green,
+              isExpired || value.contains('Invalid')
+                  ? Icons.error_outline
+                  : Icons.check_circle_outline,
+              color: isExpired || value.contains('Invalid')
+                  ? Colors.red
+                  : Colors.green,
               size: 18.h,
             ),
           ),
@@ -403,7 +461,9 @@ class ProfileView extends StatelessWidget {
                       .semibold(context)
                       .copyWith(
                         fontSize: 14.sp,
-                        color: isExpired ? Colors.red : Colors.green,
+                        color: isExpired || value.contains('Invalid')
+                            ? Colors.red
+                            : Colors.green,
                       ),
                 ),
               ],
@@ -428,14 +488,18 @@ class ProfileView extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickInfoRow(BuildContext context, ColorScheme colorScheme) {
+  Widget _buildQuickInfoRow(
+    BuildContext context,
+    ColorScheme colorScheme,
+    Map<String, dynamic> userData,
+  ) {
     return Row(
       children: [
         Expanded(
           child: _buildQuickInfoCard(
             context: context,
             label: 'Employee ID',
-            value: sampleUserData['employeeCode'],
+            value: '${userData['employeeCode']}',
             icon: Icons.badge_outlined,
             colorScheme: colorScheme,
           ),
@@ -445,7 +509,7 @@ class ProfileView extends StatelessWidget {
           child: _buildQuickInfoCard(
             context: context,
             label: 'License',
-            value: sampleUserData['licenceNo'].toString().substring(0, 8),
+            value: '${userData['licenceNo']}'.substring(0, 8),
             icon: Icons.description_outlined,
             colorScheme: colorScheme,
             suffix: '...',

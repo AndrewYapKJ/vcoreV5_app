@@ -1,21 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/splash_screen_service.dart';
 
-enum SplashState {
-  loading,
-  sessionActive,
-  noSession,
-  error,
-}
+enum SplashState { loading, sessionActive, noSession, error }
 
-final splashControllerProvider =
-    FutureProvider<SplashState>((ref) async {
+final splashControllerProvider = FutureProvider<SplashState>((ref) async {
   final splashService = SplashScreenService();
-  
+
   try {
     // Check for active session and refetch MDT Functions
-    final sessionRefreshed = 
-        await splashService.checkSessionAndRefetchMDT();
+    final sessionRefreshed = await splashService.checkSessionAndRefetchMDT();
 
     if (sessionRefreshed) {
       // Session exists and MDT functions were refreshed

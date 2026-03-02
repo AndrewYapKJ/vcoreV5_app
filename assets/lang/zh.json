@@ -131,5 +131,6 @@
   "no_button": "否",
   "yes_button": "是",
   "select_vehicle": "选择车辆",
-  "continue": "继续"
+  "continue": "继续",
+  "pti_checklist": "PTI 检查清单"
 }

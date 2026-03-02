@@ -347,47 +347,6 @@ class _SafetyQuestionViewState extends ConsumerState<SafetyQuestionView>
               ),
             ),
           // Background gradient decoration
-          Positioned(
-            bottom: MediaQuery.of(context).viewPadding.bottom,
-            left: 24,
-            right: 24,
-            child: SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(0, 4),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: _animationController,
-                      curve: const Interval(0.2, 1, curve: Curves.easeOut),
-                    ),
-                  ),
-              child: Column(
-                children: [
-                  Text(
-                    AppConstants.getVersionString(),
-                    style: context.font
-                        .medium(context)
-                        .copyWith(
-                          fontSize: 12,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppConstants.getCopyrightText(DateTime.now().year),
-                    style: context.font
-                        .medium(context)
-                        .copyWith(
-                          fontSize: 12,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

@@ -14,14 +14,14 @@ class SplashScreenService {
     try {
       // Check if user has an active session
       final hasSession = await _storage.hasActiveSession();
-      
+
       if (!hasSession) {
         debugPrint('No active session found');
         return false;
       }
 
       debugPrint('Active session detected, refetching MDT Functions...');
-      
+
       // Get tenant ID
       final tenantId = await _storage.getSavedTenantId();
       if (tenantId == null) {
@@ -31,11 +31,11 @@ class SplashScreenService {
 
       // Refetch MDT Functions from API
       final mdtResponse = await _jobsApi.getMDTFunctions(tenantId: tenantId);
-      
+
       if (mdtResponse.isSuccess) {
         // Save to local storage
         final mdtJson = jsonEncode(
-          mdtResponse.functions.map((f) => f.toJson()).toList()
+          mdtResponse.functions.map((f) => f.toJson()).toList(),
         );
         await _storage.saveMDTFunctions(mdtJson);
         debugPrint('MDT Functions refreshed and saved successfully');
@@ -61,7 +61,7 @@ class SplashScreenService {
       final functions = decoded
           .map((item) => MDTFunction.fromJson(item as Map<String, dynamic>))
           .toList();
-      
+
       return functions;
     } catch (e) {
       debugPrint('Error loading cached MDT Functions: $e');

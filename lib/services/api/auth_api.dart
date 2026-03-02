@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import '../../models/login_response_model.dart';
-import '../dio/dio_repo.dart';
 
 /// Auth API Service
 /// Handles all authentication-related API calls

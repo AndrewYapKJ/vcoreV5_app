@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import '../../models/mdt_functions_model.dart';
-import '../dio/dio_repo.dart';
 
 /// Jobs/Activities API Service
 /// Handles job and activity-related API calls

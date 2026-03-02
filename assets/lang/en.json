@@ -132,5 +132,6 @@
   "no_button": "No",
   "yes_button": "Yes",
   "select_vehicle": "Select Vehicle",
-  "continue": "Continue"
+  "continue": "Continue",
+  "pti_checklist": "PTI Checklist"
 }

@@ -293,4 +293,28 @@ class LoginCacheService {
   bool isCachedSessionValid() {
     return getCachedLoginData() != null && isSessionValid();
   }
+
+  /// Get cached driver ID
+  String? getCachedDriverId() {
+    try {
+      if (!isSessionValid()) {
+        return null;
+      }
+
+      final userInfo = getCachedUserInfo();
+      if (userInfo != null && userInfo.containsKey('driverId')) {
+        return userInfo['driverId'] as String?;
+      }
+
+      final loginData = getCachedLoginData();
+      if (loginData != null && loginData.containsKey('driverId')) {
+        return loginData['driverId'] as String?;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving cached driver ID: $e');
+      return null;
+    }
+  }
 }

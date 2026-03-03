@@ -1,11 +1,21 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
+import 'package:vcore_v5_app/models/trailer_search_model.dart';
+import 'package:vcore_v5_app/models/uploaded_file_model.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
+import 'package:vcore_v5_app/providers/user_provider.dart';
+import 'package:vcore_v5_app/services/api/job_api.dart';
+import 'package:vcore_v5_app/services/api/vehicle_api.dart';
+import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 
 class JobDetailsView extends ConsumerStatefulWidget {
   final Job job;
@@ -25,8 +35,22 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   bool _trailerRun = false;
   final ImagePicker _picker = ImagePicker();
   int _uploadedFilesCount = 0;
+  bool _isUploadingImages = false;
   late PageController _pageController;
   int _currentPage = 0;
+
+  // Trailer search state
+  final VehicleApi _vehicleApi = VehicleApi();
+  Timer? _trailerSearchDebounce;
+  List<TrailerSearchResult> _trailerSearchResults = [];
+  bool _isSearchingTrailers = false;
+  bool _isSelectingTrailer = false;
+  final FocusNode _trailerFocusNode = FocusNode();
+
+  // Uploaded images state
+  final JobApi _jobApi = JobApi();
+  List<UploadedFile> _uploadedImages = [];
+  bool _isLoadingImages = false;
 
   bool get _hasB2B {
     if (widget.job.b2bData == null) return false;
@@ -46,6 +70,12 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     _remarksController = TextEditingController(text: widget.job.remarks);
     _headRun = widget.job.headRun ?? false;
     _trailerRun = widget.job.trailerRun ?? false;
+
+    // Add listener for trailer search
+    _trailerIdController.addListener(_onTrailerSearchChanged);
+
+    // Fetch uploaded images
+    _fetchUploadedImages();
   }
 
   @override
@@ -53,22 +83,390 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     _pageController.dispose();
     _containerNoController.dispose();
     _sealNoController.dispose();
+    _trailerIdController.removeListener(_onTrailerSearchChanged);
     _trailerIdController.dispose();
     _remarksController.dispose();
+    _trailerSearchDebounce?.cancel();
+    _trailerFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImages() async {
-    final List<XFile> images = await _picker.pickMultiImage();
-    if (images.isNotEmpty) {
+  /// Fetch uploaded images for this job
+  Future<void> _fetchUploadedImages() async {
+    if (mounted) {
       setState(() {
-        _uploadedFilesCount += images.length;
+        _isLoadingImages = true;
       });
+    }
+
+    try {
+      print('📷 Fetching images for job: ${widget.job.no}');
+      final images = await _jobApi.getJobImages(jobNo: widget.job.no!);
+      print('✅ Fetched ${images.length} images');
+
+      if (mounted) {
+        setState(() {
+          _uploadedImages = images;
+          _uploadedFilesCount = images.length;
+          _isLoadingImages = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching images: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingImages = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load images: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// View full-size image
+  void _viewImage(UploadedFile image) {
+    print('🖼️ Viewing image: ${image.name}');
+    try {
+      // Decode base64 image data
+      final imageBytes = base64Decode(image.data);
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Stack(
+              children: [
+                // Image
+                InteractiveViewer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.black,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(imageBytes, fit: BoxFit.contain),
+                    ),
+                  ),
+                ),
+                // Close button
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    icon: Container(
+                      padding: EdgeInsets.all(8.r),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close, color: Colors.white, size: 24.r),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+                // Image name
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 12.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      image.name,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('❌ Error viewing image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to display image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      print('🔵 _pickImages called');
+
+      // Show action sheet for camera or gallery
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext context) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 10.h),
+                  Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  ListTile(
+                    leading: Icon(
+                      Icons.photo_camera,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    title: Text(
+                      'Camera',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      print('📷 Camera selected');
+                      Navigator.pop(context, ImageSource.camera);
+                    },
+                  ),
+                  Divider(height: 1, color: Colors.grey[300]),
+                  ListTile(
+                    leading: Icon(
+                      Icons.photo_library,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    title: Text(
+                      'Gallery',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      print('🖼️ Gallery selected');
+                      Navigator.pop(context, ImageSource.gallery);
+                    },
+                  ),
+                  SizedBox(height: 10.h),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      print('✅ Source selected: $source');
+      if (source == null) {
+        print('⚠️ No source selected, returning');
+        return;
+      }
+
+      List<XFile> images = [];
+      if (source == ImageSource.camera) {
+        print('📸 Opening camera...');
+        final photo = await _picker.pickImage(source: ImageSource.camera);
+        if (photo != null) {
+          images.add(photo);
+          print('✅ Camera photo captured: ${photo.path}');
+        } else {
+          print('⚠️ No photo captured');
+        }
+      } else {
+        print('🖼️ Opening gallery...');
+        images = await _picker.pickMultiImage();
+        print('✅ ${images.length} images selected from gallery');
+      }
+
+      if (images.isEmpty) {
+        print('⚠️ No images selected, returning');
+        return;
+      }
+
+      if (!mounted) {
+        print('⚠️ Widget not mounted, returning');
+        return;
+      }
+
+      print('💬 Showing confirmation dialog for ${images.length} images');
+      // Show confirmation
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: Text(
+            'Upload Images',
+            style: GoogleFonts.inter(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Upload ${images.length} image(s) for job ${widget.job.no}?',
+            style: GoogleFonts.inter(fontSize: 14.sp),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print('❌ Upload cancelled');
+                Navigator.pop(context, false);
+              },
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                print('✅ Upload confirmed');
+                Navigator.pop(context, true);
+              },
+              child: Text(
+                'Upload',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      print('💬 Confirmation result: $confirm');
+      if (confirm != true || !mounted) {
+        print('⚠️ Upload not confirmed or widget not mounted');
+        return;
+      }
+
+      print('🚀 Starting upload...');
+      // Upload images
+      await _uploadImages(images);
+    } catch (e, stackTrace) {
+      print('❌ Error in _pickImages: $e');
+      print('Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${images.length} files selected for upload'),
-            duration: const Duration(seconds: 2),
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImages(List<XFile> images) async {
+    setState(() {
+      _isUploadingImages = true;
+    });
+
+    try {
+      final dio = DioRepo(baseUrl: 'https://vcore.x1.com.my').mDio;
+      int successCount = 0;
+
+      for (var image in images) {
+        try {
+          final fileName =
+              '${widget.job.no}-${DateFormat("yyyyMMddHHmmss").format(DateTime.now())}';
+
+          final formData = FormData.fromMap({
+            'files': await MultipartFile.fromFile(
+              image.path,
+              filename: fileName,
+            ),
+          });
+
+          final response = await dio.post(
+            '/app/ReceiveFile.ashx',
+            data: formData,
+            queryParameters: {'id': widget.job.no},
+          );
+
+          if (response.statusCode == 200 && response.data != null) {
+            print('✅ Image uploaded: $fileName');
+            successCount++;
+          }
+        } catch (e) {
+          print('❌ Failed to upload image: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _uploadedFilesCount += successCount;
+          _isUploadingImages = false;
+        });
+
+        if (successCount > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$successCount image(s) uploaded successfully'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Refresh the image list
+          _fetchUploadedImages();
+        }
+
+        if (successCount < images.length) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${images.length - successCount} image(s) failed to upload',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Upload error: $e');
+      if (mounted) {
+        setState(() {
+          _isUploadingImages = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -259,6 +657,85 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     );
   }
 
+  // Trailer search methods
+  void _onTrailerSearchChanged() {
+    // Skip if we're programmatically setting the value
+    if (_isSelectingTrailer) {
+      return;
+    }
+
+    final query = _trailerIdController.text.trim();
+
+    // Cancel previous debounce timer
+    _trailerSearchDebounce?.cancel();
+
+    if (query.isEmpty) {
+      // _hideTrailerOverlay();
+      setState(() {
+        _trailerSearchResults = [];
+        _isSearchingTrailers = false;
+      });
+      return;
+    }
+
+    // Set debounce timer for 500ms
+    _trailerSearchDebounce = Timer(const Duration(milliseconds: 500), () {
+      _searchTrailers(query);
+    });
+  }
+
+  Future<void> _searchTrailers(String query) async {
+    if (!mounted) return;
+
+    setState(() {
+      _isSearchingTrailers = true;
+    });
+
+    try {
+      final tenantId = ref.read(tenantIdProvider);
+      if (tenantId == null) {
+        throw Exception('Tenant ID not found');
+      }
+
+      final containerSize = widget.job.containerSize ?? '40';
+      final size = containerSize.replaceAll(RegExp(r'[^0-9]'), '');
+      final sizeToUse = size.isEmpty ? '40' : size;
+
+      print(
+        '🔍 Searching trailers: query=$query, size=$sizeToUse, tenantId=$tenantId',
+      );
+
+      final results = await _vehicleApi.searchTrailers(
+        trailerRegNo: query,
+        trSize: sizeToUse,
+        tenantId: int.parse(tenantId),
+      );
+
+      print('✅ Got ${results.length} trailer results');
+
+      if (mounted) {
+        setState(() {
+          _trailerSearchResults = results;
+          _isSearchingTrailers = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error searching trailers: $e');
+      if (mounted) {
+        setState(() {
+          _isSearchingTrailers = false;
+          _trailerSearchResults = [];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error searching trailers: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -268,11 +745,26 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: 16.h),
-          onPressed: () => Navigator.pop(context),
-        ),
+        // flexibleSpace: Container(
+        //   decoration: BoxDecoration(
+        //     gradient: LinearGradient(
+        //       colors: [
+        //         colorScheme.primaryContainer.withValues(alpha: 0.3),
+        //         colorScheme.secondaryContainer.withValues(alpha: 0.2),
+        //       ],
+        //       begin: Alignment.topLeft,
+        //       end: Alignment.bottomRight,
+        //     ),
+        //   ),
+        // ),
+        // leading: IconButton(
+        //   icon: Icon(
+        //     Icons.arrow_back_ios_new,
+        //     size: 16.h,
+        //     color: colorScheme.primary,
+        //   ),
+        //   onPressed: () => Navigator.pop(context),
+        // ),
         title: Text(
           _hasB2B && _currentPage == 1 ? 'B2B Linked Job' : 'Job Details',
           style: GoogleFonts.inter(
@@ -314,38 +806,56 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               ]
             : null,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _saveJobDetails,
-        backgroundColor: const Color(0xFF4CAF50),
-        icon: Icon(Icons.save, size: 16.h, color: Colors.white),
-        label: Text(
-          'Save',
-          style: GoogleFonts.inter(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF66BB6A), Color(0xFF4CAF50), Color(0xFF43A047)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _saveJobDetails,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          icon: Icon(Icons.save, size: 16.h, color: Colors.white),
+          label: Text(
+            'Save',
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
-      body: _hasB2B
-          ? PageView(
-              controller: _pageController,
-              onPageChanged: (page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
-              children: [
-                _buildJobDetailsContent(widget.job, colorScheme, isDark),
-                _buildJobDetailsContent(
-                  widget.job.b2bData!,
-                  colorScheme,
-                  isDark,
-                  isB2B: true,
-                ),
-              ],
-            )
-          : _buildJobDetailsContent(widget.job, colorScheme, isDark),
+      body: SafeArea(
+        child: _hasB2B
+            ? PageView(
+                controller: _pageController,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                children: [
+                  _buildJobDetailsContent(widget.job, colorScheme, isDark),
+                  _buildJobDetailsContent(
+                    widget.job.b2bData!,
+                    colorScheme,
+                    isDark,
+                    isB2B: true,
+                  ),
+                ],
+              )
+            : _buildJobDetailsContent(widget.job, colorScheme, isDark),
+      ),
     );
   }
 
@@ -372,15 +882,24 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    cardColor.withValues(alpha: 0.12),
-                    cardColor.withValues(alpha: 0.05),
+                    cardColor.withValues(alpha: 0.2),
+                    colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    cardColor.withValues(alpha: 0.15),
                   ],
+                  stops: const [0.0, 0.5, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: cardColor.withValues(alpha: 0.15),
-                  width: 1,
+                  color: cardColor.withValues(alpha: 0.3),
+                  width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: cardColor.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,7 +1015,9 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                 'icon': Icons.inventory,
               },
             ]),
+            SizedBox(height: 16.h),
             _buildSectionHeader(context, 'Job Information', Icons.edit, isDark),
+            SizedBox(height: 6.h),
             Container(
               padding: EdgeInsets.all(8.h),
               decoration: BoxDecoration(
@@ -533,16 +1054,131 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                     isRequired: true,
                   ),
                   SizedBox(height: 8.h),
-                  // Trailer ID with QR Scanner
-                  _buildEditableField(
-                    context,
-                    'Trailer ID',
-                    _trailerIdController,
-                    Icons.rv_hookup,
-                    colorScheme,
-                    isDark,
-                    hasQrScanner: true,
-                    isRequired: true,
+                  // Trailer ID with QR Scanner and Search
+                  Column(
+                    children: [
+                      _buildEditableField(
+                        context,
+                        'Trailer ID',
+                        _trailerIdController,
+                        Icons.rv_hookup,
+                        colorScheme,
+                        isDark,
+                        hasQrScanner: true,
+                        isRequired: true,
+                        focusNode: _trailerFocusNode,
+                      ),
+                      // Direct dropdown below field
+                      if (_trailerSearchResults.isNotEmpty ||
+                          _isSearchingTrailers)
+                        Container(
+                          margin: EdgeInsets.only(top: 4.h),
+                          constraints: BoxConstraints(maxHeight: 200.h),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: _isSearchingTrailers
+                              ? Padding(
+                                  padding: EdgeInsets.all(16.h),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.h,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: _trailerSearchResults.length,
+                                  itemBuilder: (context, index) {
+                                    final trailer =
+                                        _trailerSearchResults[index];
+                                    return InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _isSelectingTrailer = true;
+                                          _trailerSearchResults = [];
+                                          _isSearchingTrailers = false;
+                                        });
+                                        _trailerIdController.text =
+                                            trailer.trailerRegNo;
+                                        _trailerFocusNode.unfocus();
+                                        // Reset flag after a short delay
+                                        Future.delayed(
+                                          const Duration(milliseconds: 100),
+                                          () {
+                                            if (mounted) {
+                                              setState(() {
+                                                _isSelectingTrailer = false;
+                                              });
+                                            }
+                                          },
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w,
+                                          vertical: 10.h,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: colorScheme.outline
+                                                  .withValues(alpha: 0.1),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.rv_hookup,
+                                              size: 16.h,
+                                              color: colorScheme.primary,
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    trailer.trailerRegNoDisp,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 11.sp,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'ID: ${trailer.trailerID}',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 9.sp,
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                    ],
                   ),
                   SizedBox(height: 8.h),
                   // Current Activity Status
@@ -550,6 +1186,9 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                   SizedBox(height: 8.h),
                   // Upload Files
                   _buildUploadField(context, colorScheme, isDark),
+                  SizedBox(height: 8.h),
+                  // Image Gallery
+                  _buildImageGallery(context, colorScheme, isDark),
                   SizedBox(height: 8.h),
                   // Driver Remarks
                   _buildRemarksField(context, colorScheme, isDark),
@@ -791,35 +1430,33 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 8.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            colorScheme.primary.withValues(alpha: 0.02),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
+      // decoration: BoxDecoration(
+      //   gradient: LinearGradient(
+      //     colors: [
+      //       colorScheme.primaryContainer.withValues(alpha: 0.6),
+      //       colorScheme.secondaryContainer.withValues(alpha: 0.4),
+      //       colorScheme.primary.withValues(alpha: 0.1),
+      //     ],
+      //   ),
+      //   borderRadius: BorderRadius.circular(8),
+      //   border: Border.all(
+      //     color: colorScheme.primary.withValues(alpha: 0.4),
+      //     width: 1.5,
+      //   ),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: colorScheme.primary.withValues(alpha: 0.15),
+      //       blurRadius: 6,
+      //       offset: const Offset(0, 2),
+      //     ),
+      //   ],
+      // ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(6.h),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(7),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: colorScheme.primary, size: 13.h),
+
+            child: Icon(icon, color: colorScheme.secondary, size: 13.h),
           ),
           SizedBox(width: 8.w),
           Text(
@@ -977,19 +1614,38 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       margin: EdgeInsets.only(bottom: 6.h),
       padding: EdgeInsets.all(8.h),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.surfaceContainerHigh,
+            colorScheme.tertiaryContainer.withValues(alpha: 0.2),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.1),
-          width: 1,
+          color: colorScheme.primary.withValues(alpha: 0.2),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(5.h),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary.withValues(alpha: 0.25),
+                  colorScheme.tertiary.withValues(alpha: 0.2),
+                ],
+              ),
               borderRadius: BorderRadius.circular(5),
             ),
             child: Icon(icon, color: colorScheme.primary, size: 12.h),
@@ -1046,7 +1702,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         crossAxisCount: 2,
         crossAxisSpacing: 8.w,
         mainAxisSpacing: 8.h,
-        childAspectRatio: 3,
+        childAspectRatio: 2.7,
       ),
       itemCount: filteredItems.length,
       itemBuilder: (context, index) {
@@ -1056,16 +1712,23 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         return Container(
           padding: EdgeInsets.all(8.h),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh,
+            gradient: LinearGradient(
+              colors: [
+                colorScheme.surfaceContainerHigh,
+                colorScheme.primaryContainer.withValues(alpha: 0.15),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.15),
-              width: 1,
+              color: colorScheme.primary.withValues(alpha: 0.25),
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-                blurRadius: 4,
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -1079,8 +1742,20 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                   Container(
                     padding: EdgeInsets.all(4.h),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primaryContainer.withValues(alpha: 0.5),
+                          colorScheme.secondaryContainer.withValues(alpha: 0.4),
+                        ],
+                      ),
                       borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.2),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Icon(
                       item['icon'] as IconData,
@@ -1130,6 +1805,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     bool isDark, {
     bool hasQrScanner = false,
     bool isRequired = false,
+    FocusNode? focusNode,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1158,6 +1834,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         SizedBox(height: 4.h),
         TextField(
           controller: controller,
+          focusNode: focusNode,
           style: GoogleFonts.inter(
             fontSize: 11.sp,
             fontWeight: FontWeight.w600,
@@ -1203,7 +1880,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 8.w,
-              vertical: 8.h,
+              vertical: 0.h,
             ),
           ),
         ),
@@ -1331,7 +2008,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         ),
         SizedBox(height: 4.h),
         InkWell(
-          onTap: _pickImages,
+          onTap: _isUploadingImages ? null : _pickImages,
           borderRadius: BorderRadius.circular(8),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
@@ -1344,27 +2021,176 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.file_upload_outlined,
-                  size: 16.h,
-                  color: colorScheme.primary,
-                ),
+                _isUploadingImages
+                    ? SizedBox(
+                        width: 16.h,
+                        height: 16.h,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.primary,
+                        ),
+                      )
+                    : Icon(
+                        Icons.file_upload_outlined,
+                        size: 16.h,
+                        color: colorScheme.primary,
+                      ),
                 SizedBox(width: 8.w),
                 Text(
-                  '$_uploadedFilesCount files uploaded',
+                  _isUploadingImages
+                      ? 'Uploading...'
+                      : '$_uploadedFilesCount files uploaded',
                   style: GoogleFonts.inter(
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
-                Icon(
-                  Icons.add_circle_outline,
-                  size: 16.h,
-                  color: colorScheme.primary,
-                ),
+                if (!_isUploadingImages)
+                  Icon(
+                    Icons.add_circle_outline,
+                    size: 16.h,
+                    color: colorScheme.primary,
+                  ),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageGallery(
+    BuildContext context,
+    ColorScheme colorScheme,
+    bool isDark,
+  ) {
+    if (_isLoadingImages) {
+      return Container(
+        padding: EdgeInsets.symmetric(vertical: 20.h),
+        alignment: Alignment.center,
+        child: CircularProgressIndicator(color: colorScheme.primary),
+      );
+    }
+
+    if (_uploadedImages.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Uploaded Images (${_uploadedImages.length})',
+          style: GoogleFonts.inter(
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Container(
+          height: 120.h,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _uploadedImages.length,
+            separatorBuilder: (context, index) => SizedBox(width: 8.w),
+            itemBuilder: (context, index) {
+              final image = _uploadedImages[index];
+              final imageBytes = base64Decode(image.data);
+
+              return InkWell(
+                onTap: () => _viewImage(image),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 100.w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colorScheme.surfaceContainerHigh,
+                        colorScheme.primaryContainer.withValues(alpha: 0.15),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.25),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      // Image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          imageBytes,
+                          width: 100.w,
+                          height: 120.h,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      // Overlay with magnifying glass icon
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.5),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.search,
+                            color: Colors.white,
+                            size: 24.r,
+                          ),
+                        ),
+                      ),
+                      // Image name at bottom
+                      Positioned(
+                        bottom: 4.h,
+                        left: 4.w,
+                        right: 4.w,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 4.w,
+                            vertical: 2.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            image.name.split('-').last,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 8.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

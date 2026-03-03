@@ -1,21 +1,26 @@
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
+import 'package:vcore_v5_app/providers/jobs_provider.dart';
+import 'package:vcore_v5_app/providers/user_provider.dart';
+import 'package:vcore_v5_app/services/api/job_api.dart';
 import 'package:vcore_v5_app/services/job_service.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
-class JobListView extends StatefulWidget {
+class JobListView extends ConsumerStatefulWidget {
   const JobListView({super.key});
 
   @override
-  State<JobListView> createState() => _JobListViewState();
+  ConsumerState<JobListView> createState() => _JobListViewState();
 }
 
-class _JobListViewState extends State<JobListView>
+class _JobListViewState extends ConsumerState<JobListView>
     with TickerProviderStateMixin {
   late TabController _jobTypeTabController;
   late TabController _statusTabController;
@@ -1726,7 +1731,276 @@ class _JobListViewState extends State<JobListView>
     Job job,
     ColorScheme colorScheme,
   ) {
-    _showSnackbar(context, 'Long press - Edit mode: ${job.no}');
+    _showUpdateJobActivityDialog(context, job);
+  }
+
+  /// Show dialog to update job activity (MDT function)
+  void _showUpdateJobActivityDialog(BuildContext context, Job job) {
+    final mdtFunctionsAsync = ref.read(enabledMDTFunctionsProvider);
+    final currentMdtCode = job.mdtCode;
+
+    mdtFunctionsAsync.when(
+      data: (allFunctions) {
+        // Filter MDT functions 100-108 (job status activities)
+        final jobStatusFunctions = allFunctions
+            .where((mdt) => mdt.mdtCode >= 100 && mdt.mdtCode <= 108)
+            .toList();
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Update Job Activity',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: jobStatusFunctions.isEmpty
+                  ? Text(
+                      'No job status activities available',
+                      style: GoogleFonts.inter(fontSize: 11.sp),
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: jobStatusFunctions.map((mdt) {
+                        final isDisabled = mdt.mdtCode < currentMdtCode!;
+                        final isCurrentlySelected =
+                            mdt.mdtCode == currentMdtCode;
+                        final color = mdt.mdtCode == 108
+                            ? Colors.green
+                            : (mdt.mdtCode == 100
+                                  ? Colors.orange
+                                  : Colors.blue);
+                        final displayColor = isDisabled ? Colors.grey : color;
+
+                        return Opacity(
+                          opacity: isDisabled ? 0.8 : 1.0,
+                          child: Container(
+                            decoration: isCurrentlySelected
+                                ? BoxDecoration(
+                                    color: displayColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    border: Border.all(
+                                      color: displayColor,
+                                      width: 1.5,
+                                    ),
+                                  )
+                                : null,
+                            child: InkWell(
+                              onTap: isDisabled
+                                  ? null
+                                  : () async {
+                                      Navigator.pop(context);
+                                      await _updateJobActivity(
+                                        context,
+                                        job,
+                                        mdt.mdtCode,
+                                        mdt.mdtDesc,
+                                        color,
+                                      );
+                                    },
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 10.h,
+                                  horizontal: 8.w,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(6.h),
+                                      decoration: BoxDecoration(
+                                        color: displayColor.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isDisabled ? Icons.lock : Icons.circle,
+                                        size: 10.h,
+                                        color: displayColor,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10.w),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            mdt.mdtDesc,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11.sp,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDisabled
+                                                  ? Colors.grey
+                                                  : null,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Code: ${mdt.mdtCode}${isDisabled ? ' (Completed)' : ''}${isCurrentlySelected ? ' (Current)' : ''}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 9.sp,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isCurrentlySelected)
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: 18.h,
+                                        color: displayColor,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(fontSize: 11.sp),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+      loading: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Loading MDT functions...')),
+        );
+      },
+      error: (error, stack) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading MDT functions: \$error')),
+        );
+      },
+    );
+  }
+
+  /// Update job activity via API
+  Future<void> _updateJobActivity(
+    BuildContext context,
+    Job job,
+    int mdtCode,
+    String mdtDesc,
+    Color statusColor,
+  ) async {
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      if (!mounted) return;
+      final jobApi = JobApi();
+      final driverId = LoginCacheService().getCachedDriverId() ?? '';
+      final tenantId = ref.read(tenantIdProvider) ?? '';
+      final now = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      final hasB2B = _hasValidB2B(job);
+
+      // Update main job
+      final result = await jobApi.updateJobWithDateTime(
+        jobId: job.no ?? '',
+        driverId: driverId,
+        mdtCode: mdtCode.toString(),
+        jobLastStatusDateTime: now,
+        tenantId: tenantId,
+      );
+
+      if (!mounted) return;
+
+      if (result['result'] == true) {
+        // If B2B job exists, update it as well
+        if (hasB2B && job.jobB2B != null && job.jobB2B!.isNotEmpty) {
+          await jobApi.updateJobWithDateTime(
+            jobId: job.jobB2B!,
+            driverId: driverId,
+            mdtCode: mdtCode.toString(),
+            jobLastStatusDateTime: now,
+            tenantId: tenantId,
+          );
+        }
+
+        if (!mounted) return;
+
+        // Close loading dialog
+        try {
+          Navigator.pop(context);
+        } catch (e) {
+          debugPrint('Error closing loading dialog: $e');
+        }
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Job status updated to: $mdtDesc'),
+              backgroundColor: statusColor,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // Refresh job list
+        await _fetchJobs();
+      } else {
+        if (!mounted) return;
+
+        // Close loading dialog
+        try {
+          Navigator.pop(context);
+        } catch (e) {
+          debugPrint('Error closing loading dialog: $e');
+        }
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Failed to update job: ${result['error'] ?? 'Unknown error'}",
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Close loading dialog
+      try {
+        Navigator.pop(context);
+      } catch (navigationError) {
+        debugPrint('Error closing loading dialog: $navigationError');
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating job: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _showSnackbar(BuildContext context, String message) {

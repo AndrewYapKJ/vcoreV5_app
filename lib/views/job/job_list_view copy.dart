@@ -819,7 +819,7 @@ class _JobListViewState extends State<JobListView>
     Map<String, dynamic> job,
     ColorScheme colorScheme,
   ) {
-    _showSnackbar(context, 'Long press - Edit mode: ${job['id']}');
+    // _showSnackbar(context, 'Long press - Edit mode: ${job['id']}');
   }
 
   void _showSnackbar(BuildContext context, String message) {

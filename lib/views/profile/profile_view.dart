@@ -530,12 +530,13 @@ class ProfileView extends ConsumerWidget {
     return Container(
       padding: EdgeInsets.all(14.h),
       decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            colorScheme.primary.withValues(alpha: 0.02),
+            colorScheme.primary.withValues(alpha: 0.25),
+            colorScheme.primary.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(14),

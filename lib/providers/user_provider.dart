@@ -21,11 +21,15 @@ class _UserNotifierImpl extends Notifier<LoginResponse?> {
       debugPrint('✅ UserProvider: Session is valid');
       final cachedUserInfo = cacheService.getCachedUserInfo();
       if (cachedUserInfo != null) {
-        debugPrint('📦 UserProvider: Found cached user info with keys: ${cachedUserInfo.keys.toList()}');
+        debugPrint(
+          '📦 UserProvider: Found cached user info with keys: ${cachedUserInfo.keys.toList()}',
+        );
         // Reconstruct LoginResponse from cached data
         final loginResponse = LoginResponse.fromJson(cachedUserInfo);
         state = loginResponse;
-        debugPrint('✅ UserProvider: User data loaded - Name: ${loginResponse.name}, TenantId: ${loginResponse.tenantId}');
+        debugPrint(
+          '✅ UserProvider: User data loaded - Name: ${loginResponse.name}, TenantId: ${loginResponse.tenantId}',
+        );
       } else {
         debugPrint('⚠️ UserProvider: Cached user info is null');
       }

@@ -1635,8 +1635,13 @@ class _JobListViewState extends ConsumerState<JobListView>
     );
   }
 
-  void _onJobCardTap(BuildContext context, Job job) {
-    context.push('/job-details', extra: job);
+  void _onJobCardTap(BuildContext context, Job job) async {
+    final result = await context.push('/job-details', extra: job);
+    // If activity was updated, refresh the job list
+    if (result == true && mounted) {
+      debugPrint('Activity updated, refreshing job list...');
+      await _fetchJobs();
+    }
   }
 
   bool _hasValidB2B(Job job) {
@@ -1792,14 +1797,33 @@ class _JobListViewState extends ConsumerState<JobListView>
                               onTap: isDisabled
                                   ? null
                                   : () async {
-                                      Navigator.pop(context);
-                                      await _updateJobActivity(
+                                      final success = await _updateJobActivity(
                                         context,
                                         job,
                                         mdt.mdtCode,
                                         mdt.mdtDesc,
                                         color,
                                       );
+                                      debugPrint(
+                                        'Update Job Activity Success: $success',
+                                      );
+                                      Future.delayed(
+                                        Duration(milliseconds: 300),
+                                      );
+                                      if (success) {
+                                        // Show success snackbar
+                                        _safeShowSnackBar(
+                                          context,
+                                          'Job status updated to: ${mdt.mdtDesc}',
+                                          color,
+                                        );
+                                      } else {
+                                        // Show error dialog
+                                        _showErrorDialog(
+                                          context,
+                                          'Failed to update job activity. Please try again.',
+                                        );
+                                      }
                                     },
                               child: Padding(
                                 padding: EdgeInsets.symmetric(
@@ -1888,8 +1912,8 @@ class _JobListViewState extends ConsumerState<JobListView>
     );
   }
 
-  /// Update job activity via API
-  Future<void> _updateJobActivity(
+  /// Update job activity via API - returns true if successful, false if failed
+  Future<bool> _updateJobActivity(
     BuildContext context,
     Job job,
     int mdtCode,
@@ -1897,15 +1921,29 @@ class _JobListViewState extends ConsumerState<JobListView>
     Color statusColor,
   ) async {
     // Show loading indicator
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    if (!mounted) return false;
+
+    late BuildContext dialogContext;
 
     try {
-      if (!mounted) return;
+      // Don't await showDialog - just show it and continue
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext ctx) {
+          dialogContext = ctx;
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+      // Give the dialog a moment to appear
+      await Future.delayed(const Duration(milliseconds: 100));
+    } catch (e) {
+      debugPrint('Error showing loading dialog: $e');
+    }
+
+    try {
+      if (!mounted) return false;
+
       final jobApi = JobApi();
       final driverId = LoginCacheService().getCachedDriverId() ?? '';
       final tenantId = ref.read(tenantIdProvider) ?? '';
@@ -1921,7 +1959,12 @@ class _JobListViewState extends ConsumerState<JobListView>
         tenantId: tenantId,
       );
 
-      if (!mounted) return;
+      if (!mounted) return false;
+
+      // Close loading dialog immediately
+      if (Navigator.canPop(dialogContext)) {
+        Navigator.pop(dialogContext);
+      }
 
       if (result['result'] == true) {
         // If B2B job exists, update it as well
@@ -1935,71 +1978,148 @@ class _JobListViewState extends ConsumerState<JobListView>
           );
         }
 
-        if (!mounted) return;
-
-        // Close loading dialog
-        try {
-          Navigator.pop(context);
-        } catch (e) {
-          debugPrint('Error closing loading dialog: $e');
-        }
-
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Job status updated to: $mdtDesc'),
-              backgroundColor: statusColor,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-
-        // Refresh job list
+        // Refresh job list after successful update
         await _fetchJobs();
+        return true;
       } else {
-        if (!mounted) return;
-
-        // Close loading dialog
-        try {
-          Navigator.pop(context);
-        } catch (e) {
-          debugPrint('Error closing loading dialog: $e');
-        }
-
-        // Show error message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Failed to update job: ${result['error'] ?? 'Unknown error'}",
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
+        return false;
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
 
-      // Close loading dialog
-      try {
-        Navigator.pop(context);
-      } catch (navigationError) {
-        debugPrint('Error closing loading dialog: $navigationError');
+      // Close loading dialog immediately
+      if (Navigator.canPop(dialogContext)) {
+        Navigator.pop(dialogContext);
       }
 
-      // Show error message
+      debugPrint('Error updating job: $e');
+      return false;
+    }
+  }
+
+  /// Show custom error dialog for failed job update
+  void _showErrorDialog(BuildContext context, String errorMessage) {
+    try {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 24.sp,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Text(
+                    'Update Failed',
+                    style: GoogleFonts.inter(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Unable to update job activity',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: Colors.red.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      errorMessage,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.red[700],
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Please check the required fields and try again.',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(
+                  'OK',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error showing error dialog: $e');
+    }
+  }
+
+  /// Safely show snackbar without triggering deactivated widget errors
+  void _safeShowSnackBar(BuildContext context, String message, Color bgColor) {
+    try {
       if (mounted) {
+        final duration = bgColor == Colors.red
+            ? const Duration(seconds: 3)
+            : const Duration(seconds: 2);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating job: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            content: Text(message),
+            backgroundColor: bgColor,
+            duration: duration,
           ),
         );
       }
+    } catch (e) {
+      debugPrint('Error showing snackbar: $e');
     }
   }
 

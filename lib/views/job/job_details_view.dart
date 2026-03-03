@@ -16,6 +16,7 @@ import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
 import 'package:vcore_v5_app/services/api/vehicle_api.dart';
 import 'package:vcore_v5_app/services/dio/dio_repo.dart';
+import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class JobDetailsView extends ConsumerStatefulWidget {
   final Job job;
@@ -46,11 +47,15 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   bool _isSearchingTrailers = false;
   bool _isSelectingTrailer = false;
   final FocusNode _trailerFocusNode = FocusNode();
+  String _selectedTrailerId = ''; // Store selected trailer ID
 
   // Uploaded images state
   final JobApi _jobApi = JobApi();
   List<UploadedFile> _uploadedImages = [];
   bool _isLoadingImages = false;
+
+  // Cached tenant ID from login cache
+  String? _cachedTenantId;
 
   bool get _hasB2B {
     if (widget.job.b2bData == null) return false;
@@ -61,6 +66,9 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   @override
   void initState() {
     super.initState();
+    // Cache tenant ID from login cache service
+    _cachedTenantId = LoginCacheService().getCachedTenantId();
+
     _pageController = PageController();
     _containerNoController = TextEditingController(
       text: widget.job.containerNo,
@@ -68,6 +76,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     _sealNoController = TextEditingController(text: widget.job.sealNo);
     _trailerIdController = TextEditingController(text: widget.job.trailerNo);
     _remarksController = TextEditingController(text: widget.job.remarks);
+    _selectedTrailerId = ''; // Initialize trailer ID
     _headRun = widget.job.headRun ?? false;
     _trailerRun = widget.job.trailerRun ?? false;
 
@@ -474,187 +483,121 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   }
 
   Future<void> _saveJobDetails() async {
-    // Update job object with new values
-    widget.job.containerNo = _containerNoController.text;
-    widget.job.sealNo = _sealNoController.text;
-    widget.job.trailerNo = _trailerIdController.text;
-    widget.job.remarks = _remarksController.text;
-    widget.job.headRun = _headRun;
-    widget.job.trailerRun = _trailerRun;
+    if (!mounted) return;
 
-    // Show success message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Job details saved successfully'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      // Navigate back
-      Navigator.pop(context);
-    }
-  }
-
-  void _showMDTFunctionDialog() {
-    final mdtFunctionsAsync = ref.read(enabledMDTFunctionsProvider);
-    final currentMdtCode = widget.job.mdtCode;
-
-    mdtFunctionsAsync.when(
-      data: (allFunctions) {
-        // Filter MDT functions 100-108
-        final jobStatusFunctions = allFunctions
-            .where((mdt) => mdt.mdtCode >= 100 && mdt.mdtCode <= 108)
-            .toList();
-
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text(
-                'Update Job Activity',
-                style: GoogleFonts.inter(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              content: jobStatusFunctions.isEmpty
-                  ? Text(
-                      'No job status activities available',
-                      style: GoogleFonts.inter(fontSize: 11.sp),
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: jobStatusFunctions.map((mdt) {
-                        final isDisabled = mdt.mdtCode < currentMdtCode!;
-                        final isCurrentlySelected =
-                            mdt.mdtCode == currentMdtCode;
-                        final color = mdt.mdtCode == 108
-                            ? Colors.green
-                            : (mdt.mdtCode == 100
-                                  ? Colors.orange
-                                  : Colors.blue);
-                        final displayColor = isDisabled ? Colors.grey : color;
-
-                        return Opacity(
-                          opacity: isDisabled ? 0.8 : 1.0,
-                          child: Container(
-                            decoration: isCurrentlySelected
-                                ? BoxDecoration(
-                                    color: displayColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6.r),
-                                    border: Border.all(
-                                      color: displayColor,
-                                      width: 1.5,
-                                    ),
-                                  )
-                                : null,
-                            child: InkWell(
-                              onTap: isDisabled
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        widget.job.mdtCode = mdt.mdtCode;
-                                        widget.job.mdtCodef = mdt.mdtDesc;
-                                      });
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Job status updated to: ${mdt.mdtDesc}',
-                                          ),
-                                          backgroundColor: color,
-                                          duration: const Duration(seconds: 2),
-                                        ),
-                                      );
-                                    },
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 10.h,
-                                  horizontal: 8.w,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(6.h),
-                                      decoration: BoxDecoration(
-                                        color: displayColor.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        isDisabled ? Icons.lock : Icons.circle,
-                                        size: 10.h,
-                                        color: displayColor,
-                                      ),
-                                    ),
-                                    SizedBox(width: 10.w),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            mdt.mdtDesc,
-                                            style: GoogleFonts.inter(
-                                              fontSize: 11.sp,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDisabled
-                                                  ? Colors.grey
-                                                  : null,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Code: ${mdt.mdtCode}${isDisabled ? ' (Completed)' : ''}${isCurrentlySelected ? ' (Current)' : ''}',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 9.sp,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (isCurrentlySelected)
-                                      Icon(
-                                        Icons.check_circle,
-                                        size: 18.h,
-                                        color: displayColor,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.inter(fontSize: 11.sp),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-      loading: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Loading MDT functions...')),
-        );
-      },
-      error: (error, stack) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading MDT functions: $error')),
-        );
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) {
+        return const Center(child: CircularProgressIndicator());
       },
     );
+
+    try {
+      final jobApi = JobApi();
+      final tenantId = ref.read(tenantIdProvider) ?? '';
+      final containerNo = _containerNoController.text.trim();
+      final sealNo = _sealNoController.text.trim();
+      final trailerNo = _trailerIdController.text.trim();
+      final remarks = _remarksController.text.trim();
+
+      // Update main job
+      final result = await jobApi.updateJobDetails(
+        jobNo: widget.job.no ?? '',
+        trailerID: _selectedTrailerId, // Use selected trailer ID
+        trailerNo: trailerNo,
+        containerNo: containerNo,
+        sealNo: sealNo,
+        remarks: remarks,
+        siteType: 'HMS', // Default to HMS
+        pickQty: widget.job.pickQty ?? '0',
+        dropQty: widget.job.dropQty ?? '0',
+        tenantId: tenantId,
+      );
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (result['Result'] == true) {
+        // Update local job object
+        widget.job.containerNo = containerNo;
+        widget.job.sealNo = sealNo;
+        widget.job.trailerNo = trailerNo;
+        widget.job.remarks = remarks;
+        widget.job.headRun = _headRun;
+        widget.job.trailerRun = _trailerRun;
+
+        // If B2B job exists, update it too
+        if (_hasB2B && widget.job.b2bData != null) {
+          try {
+            await jobApi.updateJobDetails(
+              jobNo: widget.job.b2bData!.no ?? '',
+              trailerID:
+                  _selectedTrailerId, // Use selected trailer ID for B2B too
+              trailerNo: trailerNo,
+              containerNo: containerNo,
+              sealNo: sealNo,
+              remarks: remarks,
+              siteType: 'HMS',
+              pickQty: widget.job.b2bData!.pickQty ?? '0',
+              dropQty: widget.job.b2bData!.dropQty ?? '0',
+              tenantId: tenantId,
+            );
+            debugPrint('✅ B2B job details updated successfully');
+          } catch (e) {
+            debugPrint('⚠️ Error updating B2B job: $e');
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _hasB2B
+                    ? 'Both jobs updated successfully'
+                    : 'Job details saved successfully',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          // Stay on the job details page - don't pop
+          setState(() {});
+        }
+      } else {
+        final errorMessage = result['Error'] ?? 'Failed to save job details';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error saving job details: $e');
+      if (!mounted) return;
+
+      // Close loading dialog if still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving job details: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   // Trailer search methods
@@ -692,7 +635,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     });
 
     try {
-      final tenantId = ref.read(tenantIdProvider);
+      final tenantId = _cachedTenantId;
       if (tenantId == null) {
         throw Exception('Tenant ID not found');
       }
@@ -776,6 +719,20 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         centerTitle: false,
         actions: _hasB2B
             ? [
+                // Update Job Activity Button
+                // Padding(
+                //   padding: EdgeInsets.only(right: 8.w),
+                //   child: Tooltip(
+                //     message: 'Update Job Activity',
+                //     child: IconButton(
+                //       icon: Icon(Icons.update, size: 20.h, color: Colors.blue),
+                //       onPressed: () => _showUpdateJobActivityDialog(
+                //         context,
+                //         _currentPage == 0 ? widget.job : widget.job.b2bData!,
+                //       ),
+                //     ),
+                //   ),
+                // ),
                 Container(
                   margin: EdgeInsets.only(right: 8.w),
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -804,7 +761,20 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                   ),
                 ),
               ]
-            : null,
+            : [
+                // Update Job Activity Button (for non-B2B)
+                Padding(
+                  padding: EdgeInsets.only(right: 8.w),
+                  child: Tooltip(
+                    message: 'Update Job Activity',
+                    child: IconButton(
+                      icon: Icon(Icons.update, size: 20.h, color: Colors.blue),
+                      onPressed: () =>
+                          _showUpdateJobActivityDialog(context, widget.job),
+                    ),
+                  ),
+                ),
+              ],
       ),
       floatingActionButton: Container(
         decoration: BoxDecoration(
@@ -1111,9 +1081,13 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                                           _isSelectingTrailer = true;
                                           _trailerSearchResults = [];
                                           _isSearchingTrailers = false;
+                                          // Store both trailer ID and number
+                                          _selectedTrailerId =
+                                              trailer.trailerID?.toString() ??
+                                              '';
+                                          _trailerIdController.text =
+                                              trailer.trailerRegNo;
                                         });
-                                        _trailerIdController.text =
-                                            trailer.trailerRegNo;
                                         _trailerFocusNode.unfocus();
                                         // Reset flag after a short delay
                                         Future.delayed(
@@ -1936,7 +1910,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         ),
         SizedBox(height: 4.h),
         InkWell(
-          onTap: _showMDTFunctionDialog,
+          onTap: () => _showUpdateJobActivityDialog(context, widget.job),
           borderRadius: BorderRadius.circular(8),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
@@ -2250,5 +2224,371 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         ),
       ],
     );
+  }
+
+  /// Show dialog to select and update job activity
+  void _showUpdateJobActivityDialog(BuildContext context, Job job) {
+    final mdtFunctionsAsync = ref.read(enabledMDTFunctionsProvider);
+    final currentMdtCode = job.mdtCode;
+
+    mdtFunctionsAsync.when(
+      data: (allFunctions) {
+        // Filter MDT functions 100-108 (job status activities)
+        final jobStatusFunctions = allFunctions
+            .where((mdt) => mdt.mdtCode >= 100 && mdt.mdtCode <= 108)
+            .toList();
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                'Update Job Activity',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: jobStatusFunctions.isEmpty
+                  ? Text(
+                      'No job status activities available',
+                      style: GoogleFonts.inter(fontSize: 11.sp),
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: jobStatusFunctions.map((mdt) {
+                        final isDisabled = mdt.mdtCode < currentMdtCode!;
+                        final isCurrentlySelected =
+                            mdt.mdtCode == currentMdtCode;
+                        final color = mdt.mdtCode == 108
+                            ? Colors.green
+                            : (mdt.mdtCode == 100
+                                  ? Colors.orange
+                                  : Colors.blue);
+                        final displayColor = isDisabled ? Colors.grey : color;
+
+                        return Opacity(
+                          opacity: isDisabled ? 0.8 : 1.0,
+                          child: Container(
+                            decoration: isCurrentlySelected
+                                ? BoxDecoration(
+                                    color: displayColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                    border: Border.all(
+                                      color: displayColor,
+                                      width: 1.5,
+                                    ),
+                                  )
+                                : null,
+                            child: InkWell(
+                              onTap: isDisabled
+                                  ? null
+                                  : () async {
+                                      // Update main job
+                                      final mainSuccess =
+                                          await _updateJobActivity(
+                                            context,
+                                            widget.job,
+                                            mdt.mdtCode,
+                                            mdt.mdtDesc,
+                                            color,
+                                          );
+
+                                      // If B2B job exists, update it too
+                                      bool b2bSuccess = true;
+                                      if (_hasB2B &&
+                                          widget.job.b2bData != null) {
+                                        b2bSuccess = await _updateJobActivity(
+                                          context,
+                                          widget.job.b2bData!,
+                                          mdt.mdtCode,
+                                          mdt.mdtDesc,
+                                          color,
+                                        );
+                                      }
+
+                                      if (mounted) {
+                                        if (mainSuccess && b2bSuccess) {
+                                          _safeShowSnackBar(
+                                            context,
+                                            _hasB2B
+                                                ? 'Both jobs updated to: ${mdt.mdtDesc}'
+                                                : 'Job status updated to: ${mdt.mdtDesc}',
+                                            color,
+                                          );
+                                          // Close dialog and pop to job list with result=true to trigger refresh
+                                          Navigator.pop(
+                                            context,
+                                          ); // Close activity dialog
+                                          Future.delayed(
+                                            const Duration(milliseconds: 300),
+                                            () {
+                                              if (mounted) {
+                                                Navigator.pop(
+                                                  context,
+                                                  true, // Signal that activity was updated
+                                                ); // Pop to job list
+                                              }
+                                            },
+                                          );
+                                        } else {
+                                          _showErrorDialog(
+                                            context,
+                                            'Failed to update job activity. Please try again.',
+                                          );
+                                        }
+                                      }
+                                    },
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 10.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 12.w,
+                                      height: 12.h,
+                                      decoration: BoxDecoration(
+                                        color: displayColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12.w),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            mdt.mdtDesc,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w500,
+                                              color: displayColor,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Code: ${mdt.mdtCode}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10.sp,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isCurrentlySelected)
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: displayColor,
+                                        size: 20.sp,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+      loading: () {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) => const AlertDialog(
+            content: Center(child: CircularProgressIndicator()),
+          ),
+        );
+      },
+      error: (error, _) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: Text(
+              'Error',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Text(
+              'Failed to load job activities: $error',
+              style: GoogleFonts.inter(fontSize: 11.sp),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK', style: GoogleFonts.inter(fontSize: 12.sp)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Update job activity with B2B support
+  Future<bool> _updateJobActivity(
+    BuildContext context,
+    Job job,
+    int mdtCode,
+    String mdtDesc,
+    Color statusColor,
+  ) async {
+    if (!mounted) return false;
+
+    BuildContext? dialogContext;
+
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext ctx) {
+          dialogContext = ctx;
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+      // Give the dialog a moment to appear
+      await Future.delayed(const Duration(milliseconds: 100));
+    } catch (e) {
+      debugPrint('Error showing loading dialog: $e');
+    }
+
+    try {
+      if (!mounted) return false;
+
+      final jobApi = JobApi();
+      final driverId = LoginCacheService().getCachedDriverId() ?? '';
+      final tenantId = ref.read(tenantIdProvider) ?? '';
+      final now = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+
+      // Update job via API
+      final result = await jobApi.updateJobWithDateTime(
+        jobId: job.no ?? '',
+        driverId: driverId,
+        mdtCode: mdtCode.toString(),
+        jobLastStatusDateTime: now,
+        tenantId: tenantId,
+      );
+
+      if (!mounted) return false;
+
+      // Close loading dialog immediately
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.pop(dialogContext!);
+      }
+
+      if (result['result'] == true) {
+        // Update the local job object
+        if (mounted) {
+          setState(() {
+            job.mdtCode = mdtCode;
+            job.mdtCodef = mdtDesc;
+          });
+        }
+
+        // Refresh job details after successful update
+        return true;
+      } else {
+        debugPrint('API returned false result: $result');
+        return false;
+      }
+    } catch (e) {
+      if (!mounted) return false;
+
+      // Close loading dialog immediately
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.pop(dialogContext!);
+      }
+
+      debugPrint('Error updating job: $e');
+      return false;
+    }
+  }
+
+  /// Show custom error dialog for failed job update
+  void _showErrorDialog(BuildContext context, String errorMessage) {
+    try {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: Text(
+            'Update Failed',
+            style: GoogleFonts.inter(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.red,
+            ),
+          ),
+          content: Container(
+            padding: EdgeInsets.all(12.r),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: Colors.red, width: 1),
+            ),
+            child: Text(
+              errorMessage,
+              style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.red),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Dismiss',
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing error dialog: $e');
+    }
+  }
+
+  /// Safe snackbar display with error handling
+  void _safeShowSnackBar(BuildContext context, String message, Color color) {
+    try {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          backgroundColor: color,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing snackbar: $e');
+    }
   }
 }

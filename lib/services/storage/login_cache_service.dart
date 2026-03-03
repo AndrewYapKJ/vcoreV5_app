@@ -397,7 +397,7 @@ class LoginCacheService {
 
       final vehicleData = getCachedVehicleSelection();
       if (vehicleData != null && vehicleData.containsKey('vehicleId')) {
-        return vehicleData['vehicleId'] as String?;
+        return vehicleData['vehicleId']?.toString();
       }
 
       return null;

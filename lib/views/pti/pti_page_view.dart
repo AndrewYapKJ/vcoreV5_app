@@ -32,15 +32,35 @@ class _PTIPageViewState extends State<PTIPageView> {
   void initState() {
     super.initState();
     _pageController = PageController();
-    _currentVehicle = widget.vehicleData;
+    _currentVehicle =
+        widget.vehicleData ?? LoginCacheService().getCachedVehicleSelection();
     _ptiItemsFuture = _initializePTIItems();
     _categories = [];
     _selectedValues = {};
   }
 
+  String _resolveVehicleId() {
+    final extraVehicleId = _currentVehicle?['vehicleId']?.toString();
+    if (extraVehicleId != null && extraVehicleId.isNotEmpty) {
+      return extraVehicleId;
+    }
+
+    final cachedVehicleId = LoginCacheService().getCachedVehicleId();
+    if (cachedVehicleId != null && cachedVehicleId.isNotEmpty) {
+      return cachedVehicleId;
+    }
+
+    return '';
+  }
+
   Future<PTICheckResponse> _initializePTIItems() async {
-    final vehicleId = _currentVehicle?['vehicleId'] as String? ?? '';
+    final vehicleId = _resolveVehicleId();
     final driverId = LoginCacheService().getCachedDriverId() ?? '';
+
+    if (vehicleId.isEmpty) {
+      throw Exception('Vehicle ID not found. Please select a vehicle again.');
+    }
+
     return _ptiService.getPTICheckItemsByCategoryWithStatus(
       vehicleId: vehicleId,
       driverId: driverId,
@@ -88,8 +108,13 @@ class _PTIPageViewState extends State<PTIPageView> {
         ),
       );
 
-      final vehicleId = _currentVehicle?['vehicleId'] as String? ?? '';
+      final vehicleId = _resolveVehicleId();
       final driverId = LoginCacheService().getCachedDriverId() ?? '';
+
+      if (vehicleId.isEmpty) {
+        throw Exception('Vehicle ID not found. Please select a vehicle again.');
+      }
+
       final ptiResponse = await _ptiItemsFuture;
 
       final success = await _ptiService.savePTIData(

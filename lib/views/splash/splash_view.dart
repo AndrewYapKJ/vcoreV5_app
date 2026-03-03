@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import '../../services/update_service.dart';
 import '../../services/storage/login_cache_service.dart';
+import '../../services/api/jobs_api.dart';
+import '../../providers/user_provider.dart';
 import '../../widgets/update_dialog.dart';
 
-class SplashView extends StatefulWidget {
+class SplashView extends ConsumerStatefulWidget {
   const SplashView({super.key});
 
   @override
-  State<SplashView> createState() => _SplashViewState();
+  ConsumerState<SplashView> createState() => _SplashViewState();
 }
 
-class _SplashViewState extends State<SplashView>
+class _SplashViewState extends ConsumerState<SplashView>
     with SingleTickerProviderStateMixin {
   final UpdateService _updateService = UpdateService();
   late AnimationController _animationController;
@@ -88,12 +91,59 @@ class _SplashViewState extends State<SplashView>
     // Check if user has valid cached session
     if (mounted) {
       if (loginCacheService.isCachedSessionValid()) {
-        // User has valid session, go to safety question
-        context.go('/safety-question');
+        // Get tenant ID from cache first
+        final tenantId = loginCacheService.getCachedTenantId();
+
+        if (tenantId == null) {
+          debugPrint('⚠️ Tenant ID not found in cache, going to login');
+          context.go('/login');
+          return;
+        }
+
+        // Initialize user provider so it's ready for the app
+        ref.read(userDataProvider);
+
+        // Validate session with MDT Functions API
+        final isValidSession = await _validateSessionWithMDTApi(tenantId);
+
+        if (mounted) {
+          if (isValidSession) {
+            debugPrint('✅ Session valid, proceeding to safety question');
+            context.go('/safety-question');
+          } else {
+            // Session invalid on server, clear cache and go to login
+            await loginCacheService.clearCache();
+            context.go('/login');
+          }
+        }
       } else {
         // No valid session, go to login
         context.go('/login');
       }
+    }
+  }
+
+  /// Validate session by calling MDT Functions API directly
+  /// The provider will be used when job list loads
+  Future<bool> _validateSessionWithMDTApi(String tenantId) async {
+    try {
+      // Call MDT Functions API directly to validate session
+      final jobsApi = JobsApi();
+      final mdtResponse = await jobsApi.getMDTFunctions(tenantId: tenantId);
+
+      // If API call succeeds and returns functions, session is valid
+      if (mdtResponse.isSuccess && mdtResponse.functions.isNotEmpty) {
+        debugPrint(
+          '✅ Session validated, ${mdtResponse.functions.length} MDT functions available',
+        );
+        return true;
+      }
+
+      debugPrint('⚠️ MDT Functions API returned no data');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Session validation failed: $e');
+      return false;
     }
   }
 

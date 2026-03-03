@@ -231,4 +231,84 @@ class JobApi {
       rethrow;
     }
   }
+
+  /// Update Job Details
+  /// POST /UpdateJobDetails
+  ///
+  /// Request:
+  /// {
+  ///   "jobNo": "CNE-2602-0013-1-D1",
+  ///   "trailerID": "47",
+  ///   "trailerNo": "TR-001",
+  ///   "containerNo": "CONT123",
+  ///   "SealNo": "SEAL123",
+  ///   "remarks": "Some remarks",
+  ///   "siteType": "HMS",
+  ///   "pickQty": "1",
+  ///   "dropQty": "0",
+  ///   "TenantId": "2010"
+  /// }
+  ///
+  /// Response:
+  /// {
+  ///   "d": {
+  ///     "result": true,
+  ///     "message": "Success"
+  ///   }
+  /// }
+  Future<Map<String, dynamic>> updateJobDetails({
+    required String jobNo,
+    required String trailerID,
+    required String trailerNo,
+    required String containerNo,
+    required String sealNo,
+    required String remarks,
+    required String siteType,
+    required String pickQty,
+    required String dropQty,
+    required String tenantId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/UpdateJobDetails',
+        data: {
+          "formData": {
+            'jobNo': jobNo,
+            'trailerID': trailerID,
+            'trailerNo': trailerNo,
+            'containerNo': containerNo,
+            'SealNo': sealNo,
+            'remarks': remarks,
+            'siteType': siteType,
+            'pickQty': pickQty,
+            'dropQty': dropQty,
+            'TenantId': tenantId,
+          },
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final result = response.data['d'] as Map<String, dynamic>? ?? {};
+        debugPrint('✅ UpdateJobDetails Success: $result');
+        return result;
+      }
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        message: 'Unexpected response format',
+        response: response,
+      );
+    } on DioException catch (e) {
+      debugPrint('❌ UpdateJobDetails API Error: ${e.response}');
+      // Return error response for proper handling
+      return {
+        'result': false,
+        'message':
+            e.response?.data?['d']?['message'] ??
+            e.message ??
+            'Error updating job details',
+        'error': e.response?.data?['d']?['error'],
+      };
+    }
+  }
 }

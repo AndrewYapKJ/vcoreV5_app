@@ -17,6 +17,7 @@ import 'package:vcore_v5_app/services/api/job_api.dart';
 import 'package:vcore_v5_app/services/api/vehicle_api.dart';
 import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
+import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
 class JobDetailsView extends ConsumerStatefulWidget {
   final Job job;
@@ -63,6 +64,15 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     return b2bValue.isNotEmpty && b2bValue != '0' && b2bValue != widget.job.no;
   }
 
+  Job get _activeImageJob {
+    if (_hasB2B && _currentPage == 1 && widget.job.b2bData != null) {
+      return widget.job.b2bData!;
+    }
+    return widget.job;
+  }
+
+  String get _activeImageJobNo => _activeImageJob.no ?? '';
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +95,9 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
     // Fetch uploaded images
     _fetchUploadedImages();
+
+    // Initialize trailer ID from current job
+    _initializeTrailerInfo();
   }
 
   @override
@@ -100,8 +113,73 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     super.dispose();
   }
 
+  /// Initialize trailer ID from current job trailer number
+  /// Searches for the trailer and auto-sets _selectedTrailerId
+  Future<void> _initializeTrailerInfo() async {
+    try {
+      final trailerNo = widget.job.trailerNo?.trim() ?? '';
+      if (trailerNo.isEmpty) {
+        print('⚠️ No trailer number in job, skipping initialization');
+        return;
+      }
+
+      final tenantId = _cachedTenantId;
+      if (tenantId == null) {
+        print('⚠️ No tenant ID available, skipping trailer initialization');
+        return;
+      }
+
+      final containerSize = widget.job.containerSize ?? '40';
+      final size = containerSize.replaceAll(RegExp(r'[^0-9]'), '');
+      final sizeToUse = size.isEmpty ? '40' : size;
+
+      print(
+        '🔍 Initializing trailer info: trailerNo=$trailerNo, size=$sizeToUse',
+      );
+
+      // Search for the trailer
+      final results = await _vehicleApi.searchTrailers(
+        trailerRegNo: trailerNo,
+        trSize: sizeToUse,
+        tenantId: int.parse(tenantId),
+      );
+
+      if (results.isNotEmpty) {
+        // Auto-select the first matching trailer
+        final selectedTrailer = results.first;
+        final trailerId = selectedTrailer.trailerID;
+        if (mounted) {
+          setState(() {
+            _selectedTrailerId = trailerId;
+          });
+        }
+        print('✅ Trailer initialized: $_selectedTrailerId');
+        print(
+          '✅ Trailer details: ${selectedTrailer.trailerRegNo}, ${selectedTrailer.trailerSize}',
+        );
+      } else {
+        print('⚠️ No trailers found for number: $trailerNo');
+      }
+    } catch (e) {
+      print('❌ Error initializing trailer info: $e');
+      // Don't show error snackbar for initialization, just log it
+    }
+  }
+
   /// Fetch uploaded images for this job
   Future<void> _fetchUploadedImages() async {
+    final jobNo = _activeImageJobNo;
+    if (jobNo.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _uploadedImages = [];
+          _uploadedFilesCount = 0;
+          _isLoadingImages = false;
+        });
+      }
+      return;
+    }
+
     if (mounted) {
       setState(() {
         _isLoadingImages = true;
@@ -109,8 +187,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     }
 
     try {
-      print('📷 Fetching images for job: ${widget.job.no}');
-      final images = await _jobApi.getJobImages(jobNo: widget.job.no!);
+      print('📷 Fetching images for job: $jobNo (page: ${_currentPage + 1})');
+      final images = await _jobApi.getJobImages(jobNo: jobNo);
       print('✅ Fetched ${images.length} images');
 
       if (mounted) {
@@ -225,6 +303,18 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   Future<void> _pickImages() async {
     try {
       print('🔵 _pickImages called');
+      final activeJobNo = _activeImageJobNo;
+      if (activeJobNo.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Job number is missing, cannot upload images'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
       // Show action sheet for camera or gallery
       final source = await showModalBottomSheet<ImageSource>(
@@ -340,7 +430,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             ),
           ),
           content: Text(
-            'Upload ${images.length} image(s) for job ${widget.job.no}?',
+            'Upload ${images.length} image(s) for job $activeJobNo?',
             style: GoogleFonts.inter(fontSize: 14.sp),
           ),
           actions: [
@@ -406,11 +496,16 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     try {
       final dio = DioRepo(baseUrl: 'https://vcore.x1.com.my').mDio;
       int successCount = 0;
+      final activeJobNo = _activeImageJobNo;
+
+      if (activeJobNo.isEmpty) {
+        throw Exception('Job number is missing, cannot upload images');
+      }
 
       for (var image in images) {
         try {
           final fileName =
-              '${widget.job.no}-${DateFormat("yyyyMMddHHmmss").format(DateTime.now())}';
+              '$activeJobNo-${DateFormat("yyyyMMddHHmmss").format(DateTime.now())}';
 
           final formData = FormData.fromMap({
             'files': await MultipartFile.fromFile(
@@ -422,7 +517,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           final response = await dio.post(
             '/app/ReceiveFile.ashx',
             data: formData,
-            queryParameters: {'id': widget.job.no},
+            queryParameters: {'id': activeJobNo},
           );
 
           if (response.statusCode == 200 && response.data != null) {
@@ -485,6 +580,47 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   Future<void> _saveJobDetails() async {
     if (!mounted) return;
 
+    // Validate required fields
+    final containerNo = _containerNoController.text.trim();
+    final sealNo = _sealNoController.text.trim();
+    final trailerNo = _trailerIdController.text.trim();
+
+    if (containerNo.isEmpty) {
+      CustomSnackBar.showError(
+        context,
+        message: 'Container No is required',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    if (sealNo.isEmpty) {
+      CustomSnackBar.showError(
+        context,
+        message: 'Seal No is required',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    if (trailerNo.isEmpty) {
+      CustomSnackBar.showError(
+        context,
+        message: 'Trailer No is required',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    if (_selectedTrailerId.isEmpty) {
+      CustomSnackBar.showError(
+        context,
+        message: 'Please select a valid Trailer from the search results',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
     // Show loading dialog
     showDialog(
       context: context,
@@ -497,9 +633,6 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     try {
       final jobApi = JobApi();
       final tenantId = ref.read(tenantIdProvider) ?? '';
-      final containerNo = _containerNoController.text.trim();
-      final sealNo = _sealNoController.text.trim();
-      final trailerNo = _trailerIdController.text.trim();
       final remarks = _remarksController.text.trim();
 
       // Update main job
@@ -553,16 +686,12 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _hasB2B
-                    ? 'Both jobs updated successfully'
-                    : 'Job details saved successfully',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
+          CustomSnackBar.showSuccess(
+            context,
+            message: _hasB2B
+                ? 'Both jobs updated successfully'
+                : 'Job details saved successfully',
+            duration: const Duration(seconds: 2),
           );
           // Stay on the job details page - don't pop
           setState(() {});
@@ -570,12 +699,10 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       } else {
         final errorMessage = result['Error'] ?? 'Failed to save job details';
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
+          CustomSnackBar.showError(
+            context,
+            message: errorMessage,
+            duration: const Duration(seconds: 3),
           );
         }
       }
@@ -589,12 +716,10 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving job details: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        CustomSnackBar.showError(
+          context,
+          message: 'Error saving job details: $e',
+          duration: const Duration(seconds: 3),
         );
       }
     }
@@ -813,6 +938,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                   setState(() {
                     _currentPage = page;
                   });
+                  _fetchUploadedImages();
                 },
                 children: [
                   _buildJobDetailsContent(widget.job, colorScheme, isDark),
@@ -1082,9 +1208,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                                           _trailerSearchResults = [];
                                           _isSearchingTrailers = false;
                                           // Store both trailer ID and number
-                                          _selectedTrailerId =
-                                              trailer.trailerID?.toString() ??
-                                              '';
+                                          _selectedTrailerId = trailer.trailerID
+                                              .toString();
                                           _trailerIdController.text =
                                               trailer.trailerRegNo;
                                         });

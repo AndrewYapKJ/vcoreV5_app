@@ -92,7 +92,7 @@ class VehicleApi {
   }) async {
     try {
       final response = await _dio.post(
-        '/GetTrailerRegNoSearch',
+        '/GetTrailerRegNoSearchQR',
         data: {
           'TrailerRegNo': trailerRegNo,
           'TrSize': trSize,

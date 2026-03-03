@@ -1,171 +1,193 @@
+import 'dart:convert';
+
+List<Job> hmsJobModelFromJson(var str) =>
+    List<Job>.from((str).map((x) => Job.fromJson(x)));
+String hmsJobModelToJson(List<Job> data) =>
+    json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+
 class Job {
-  final int id;
-  final String no;
-  final String masterOrderNo;
-  final String dateTime;
-  final String customer;
-  final String pickup;
-  final String drop;
-  final String truckNo;
-  final String containerNo;
-  final String containerSize;
-  final String containerType;
-  final String sealNo;
-  final String trailerNo;
-  final String remarks;
-  final int mdtCode;
-  final String mdtCodef;
-  final String jTypeA;
-  final String? error;
-  final String jobType;
-  final bool headRun;
-  final bool trailerRun;
-  final String jobB2B;
-  final String gatePassNo;
-  final String gatePassDatetime;
-  final String pickOrgName;
-  final String pickOrgShortCode;
-  final String dropOrgName;
-  final String dropOrgShortCode;
-  final String pickQty;
-  final String dropQty;
-  final String tmsDOCNo;
-  final String tmsIntDOCNo;
-  final String shippingAgentRefNo;
-  final String containerOperator;
-  final String deliveryInstruction;
-  final String pickOrgContPerNamePh;
-  final String dropOrgContPerNamePh;
-  final String jobImportExport;
-  final String jobPriority;
+  int? id;
+  String? no;
+  String? masterOrderNo;
+  String? dateTime;
+  String? customer;
+  String? pickup;
+  String? drop;
+  String? truckNo;
+  String? containerNo;
+  String? containerSize;
+  String? containerType;
+  String? sealNo;
+  String? trailerNo;
+  String? remarks;
+  int? mdtCode;
+  String? mdtCodef;
+  String? jTypeA;
+  dynamic error;
+  String? jobType;
+  bool? headRun;
+  bool? trailerRun;
+  String? jobB2B;
+  Job? b2bData;
+  String? gatePassNo;
+  String? gatePassDatetime;
+  String? pickOrgName;
+  String? pickOrgShortCode;
+  String? dropOrgName;
+  String? dropOrgShortCode;
+  String? pickQty;
+  String? dropQty;
+  String? tmsDocNo;
+  String? tmsIntDocNo;
+  String? shippingAgentRefNo;
+  String? containerOperator;
+  String? deliveryInstruction;
+  String? pickOrgContPerNamePh;
+  String? dropOrgContPerNamePh;
+  String? jobImportExport;
+  String? joBpriority;
+  String? jobFromSystem;
+  String? createdByProjectTempleteTypes;
 
   Job({
-    required this.id,
-    required this.no,
-    required this.masterOrderNo,
-    required this.dateTime,
-    required this.customer,
-    required this.pickup,
-    required this.drop,
-    required this.truckNo,
-    required this.containerNo,
-    required this.containerSize,
-    required this.containerType,
-    required this.sealNo,
-    required this.trailerNo,
-    required this.remarks,
-    required this.mdtCode,
-    required this.mdtCodef,
-    required this.jTypeA,
+    this.id,
+    this.no,
+    this.masterOrderNo,
+    this.dateTime,
+    this.customer,
+    this.pickup,
+    this.drop,
+    this.truckNo,
+    this.containerNo,
+    this.containerSize,
+    this.containerType,
+    this.sealNo,
+    this.trailerNo,
+    this.remarks,
+    this.mdtCode,
+    this.mdtCodef,
+    this.jTypeA,
     this.error,
-    required this.jobType,
-    required this.headRun,
-    required this.trailerRun,
-    required this.jobB2B,
-    required this.gatePassNo,
-    required this.gatePassDatetime,
-    required this.pickOrgName,
-    required this.pickOrgShortCode,
-    required this.dropOrgName,
-    required this.dropOrgShortCode,
-    required this.pickQty,
-    required this.dropQty,
-    required this.tmsDOCNo,
-    required this.tmsIntDOCNo,
-    required this.shippingAgentRefNo,
-    required this.containerOperator,
-    required this.deliveryInstruction,
-    required this.pickOrgContPerNamePh,
-    required this.dropOrgContPerNamePh,
-    required this.jobImportExport,
-    required this.jobPriority,
+    this.jobType,
+    this.headRun,
+    this.trailerRun,
+    this.jobB2B,
+    this.b2bData,
+    this.gatePassNo,
+    this.gatePassDatetime,
+    this.pickOrgName,
+    this.pickOrgShortCode,
+    this.dropOrgName,
+    this.dropOrgShortCode,
+    this.pickQty,
+    this.dropQty,
+    this.tmsDocNo,
+    this.tmsIntDocNo,
+    this.shippingAgentRefNo,
+    this.containerOperator,
+    this.deliveryInstruction,
+    this.pickOrgContPerNamePh,
+    this.dropOrgContPerNamePh,
+    this.jobImportExport,
+    this.joBpriority,
+    this.jobFromSystem = "HMS",
+    this.createdByProjectTempleteTypes,
   });
 
-  factory Job.fromJson(Map<String, dynamic> json) {
-    return Job(
-      id: json['ID'] ?? 0,
-      no: json['NO'] ?? '',
-      masterOrderNo: json['MasterOrderNO'] ?? '',
-      dateTime: json['DateTime'] ?? '',
-      customer: json['Customer'] ?? '',
-      pickup: json['Pickup'] ?? '',
-      drop: json['Drop'] ?? '',
-      truckNo: json['TruckNO'] ?? '--',
-      containerNo: json['ContainerNO'] ?? '--',
-      containerSize: json['ContainerSize'] ?? '--',
-      containerType: json['ContainerType'] ?? '--',
-      sealNo: json['SealNO'] ?? '--',
-      trailerNo: json['TrailerNO'] ?? '--',
-      remarks: json['Remarks'] ?? '--',
-      mdtCode: json['MDTCode'] ?? 0,
-      mdtCodef: json['MDTCodef'] ?? '0000',
-      jTypeA: json['JTypeA'] ?? '',
-      error: json['error'],
-      jobType: json['JobType'] ?? '1',
-      headRun: json['HeadRun'] ?? false,
-      trailerRun: json['TrailerRun'] ?? false,
-      jobB2B: json['JobB2B'] ?? '0',
-      gatePassNo: json['GatePassNo'] ?? '',
-      gatePassDatetime: json['GatePassDatetime'] ?? '',
-      pickOrgName: json['PickOrgName'] ?? '',
-      pickOrgShortCode: json['PickOrgShortCode'] ?? '',
-      dropOrgName: json['DropOrgName'] ?? '',
-      dropOrgShortCode: json['DropOrgShortCode'] ?? '',
-      pickQty: json['PickQty'] ?? '--',
-      dropQty: json['DropQty'] ?? '--',
-      tmsDOCNo: json['TmsDOCNo'] ?? '--',
-      tmsIntDOCNo: json['TmsIntDOCNo'] ?? '--',
-      shippingAgentRefNo: json['Shipping_Agent_RefNo'] ?? '',
-      containerOperator: json['ContainerOperator'] ?? '',
-      deliveryInstruction: json['DeliveryInstruction'] ?? '',
-      pickOrgContPerNamePh: json['PickOrgContPerNamePh'] ?? '',
-      dropOrgContPerNamePh: json['DropOrgContPerNamePh'] ?? '',
-      jobImportExport: json['JOBImportExport'] ?? '',
-      jobPriority: json['JOBpriority'] ?? '1',
-    );
-  }
+  factory Job.fromJson(Map<String, dynamic> json) => Job(
+    id: (json["ID"]),
+    no: _replaceDash(json["NO"]),
+    masterOrderNo: _replaceDash(json["MasterOrderNO"]),
+    dateTime: _replaceDash(json["DateTime"]),
+    customer: _replaceDash(json["Customer"]),
+    pickup: _replaceDash(json["Pickup"]),
+    drop: _replaceDash(json["Drop"]),
+    truckNo: _replaceDash(json["TruckNO"]),
+    containerNo: _replaceDash(json["ContainerNO"]),
+    containerSize: _replaceDash(json["ContainerSize"]),
+    containerType: _replaceDash(json["ContainerType"]),
+    sealNo: _replaceDash(json["SealNO"]),
+    trailerNo: _replaceDash(json["TrailerNO"]),
+    remarks: _replaceDash(json["Remarks"]),
+    mdtCode: (json["MDTCode"]),
+    mdtCodef: _replaceDash(json["MDTCodef"]),
+    jTypeA: _replaceDash(json["JTypeA"]),
+    error: _replaceDash(json["error"]),
+    jobType: _replaceDash(json["JobType"]),
+    headRun: (json["HeadRun"]),
+    trailerRun: (json["TrailerRun"]),
+    jobB2B: _replaceDash(json["JobB2B"]),
+    gatePassNo: _replaceDash(json["GatePassNo"]),
+    gatePassDatetime: _replaceDash(json["GatePassDatetime"]),
+    pickOrgName: _replaceDash(json["PickOrgName"]),
+    pickOrgShortCode: _replaceDash(json["PickOrgShortCode"]),
+    dropOrgName: _replaceDash(json["DropOrgName"]),
+    dropOrgShortCode: _replaceDash(json["DropOrgShortCode"]),
+    pickQty: _replaceDash(json["PickQty"]),
+    dropQty: _replaceDash(json["DropQty"]),
+    tmsDocNo: _replaceDash(json["TmsDOCNo"]),
+    tmsIntDocNo: _replaceDash(json["TmsIntDOCNo"]),
+    shippingAgentRefNo: _replaceDash(json["Shipping_Agent_RefNo"]),
+    containerOperator: _replaceDash(json["ContainerOperator"]),
+    deliveryInstruction: _replaceDash(json["DeliveryInstruction"]),
+    pickOrgContPerNamePh: _replaceDash(json["PickOrgContPerNamePh"]),
+    dropOrgContPerNamePh: _replaceDash(json["DropOrgContPerNamePh"]),
+    jobImportExport: _replaceDash(json["JOBImportExport"]),
+    joBpriority: _replaceDash(json["JOBpriority"]),
+    jobFromSystem: _replaceDash(json["JobFromSystem"]),
+    createdByProjectTempleteTypes: _replaceDash(
+      json["CreatedByProjectTempleteTypes"],
+    ),
+  );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'ID': id,
-      'NO': no,
-      'MasterOrderNO': masterOrderNo,
-      'DateTime': dateTime,
-      'Customer': customer,
-      'Pickup': pickup,
-      'Drop': drop,
-      'TruckNO': truckNo,
-      'ContainerNO': containerNo,
-      'ContainerSize': containerSize,
-      'ContainerType': containerType,
-      'SealNO': sealNo,
-      'TrailerNO': trailerNo,
-      'Remarks': remarks,
-      'MDTCode': mdtCode,
-      'MDTCodef': mdtCodef,
-      'JTypeA': jTypeA,
-      'error': error,
-      'JobType': jobType,
-      'HeadRun': headRun,
-      'TrailerRun': trailerRun,
-      'JobB2B': jobB2B,
-      'GatePassNo': gatePassNo,
-      'GatePassDatetime': gatePassDatetime,
-      'PickOrgName': pickOrgName,
-      'PickOrgShortCode': pickOrgShortCode,
-      'DropOrgName': dropOrgName,
-      'DropOrgShortCode': dropOrgShortCode,
-      'PickQty': pickQty,
-      'DropQty': dropQty,
-      'TmsDOCNo': tmsDOCNo,
-      'TmsIntDOCNo': tmsIntDOCNo,
-      'Shipping_Agent_RefNo': shippingAgentRefNo,
-      'ContainerOperator': containerOperator,
-      'DeliveryInstruction': deliveryInstruction,
-      'PickOrgContPerNamePh': pickOrgContPerNamePh,
-      'DropOrgContPerNamePh': dropOrgContPerNamePh,
-      'JOBImportExport': jobImportExport,
-      'JOBpriority': jobPriority,
-    };
+  Map<String, dynamic> toJson() => {
+    "ID": id,
+    "NO": no,
+    "MasterOrderNO": masterOrderNo,
+    "DateTime": dateTime,
+    "Customer": customer,
+    "Pickup": pickup,
+    "Drop": drop,
+    "TruckNO": truckNo,
+    "ContainerNO": containerNo,
+    "ContainerSize": containerSize,
+    "ContainerType": containerType,
+    "SealNO": sealNo,
+    "TrailerNO": trailerNo,
+    "Remarks": remarks,
+    "MDTCode": mdtCode,
+    "MDTCodef": mdtCodef,
+    "JTypeA": jTypeA,
+    "error": error,
+    "JobType": jobType,
+    "HeadRun": headRun,
+    "TrailerRun": trailerRun,
+    "JobB2B": jobB2B,
+    "GatePassNo": gatePassNo,
+    "GatePassDatetime": gatePassDatetime,
+    "PickOrgName": pickOrgName,
+    "PickOrgShortCode": pickOrgShortCode,
+    "DropOrgName": dropOrgName,
+    "DropOrgShortCode": dropOrgShortCode,
+    "PickQty": pickQty,
+    "DropQty": dropQty,
+    "TmsDOCNo": tmsDocNo,
+    "TmsIntDOCNo": tmsIntDocNo,
+    "Shipping_Agent_RefNo": shippingAgentRefNo,
+    "ContainerOperator": containerOperator,
+    "DeliveryInstruction": deliveryInstruction,
+    "PickOrgContPerNamePh": pickOrgContPerNamePh,
+    "DropOrgContPerNamePh": dropOrgContPerNamePh,
+    "JOBImportExport": jobImportExport,
+    "JOBpriority": joBpriority,
+    "JobFromSystem": jobFromSystem,
+    "CreatedByProjectTempleteTypes": createdByProjectTempleteTypes,
+  };
+
+  static String _replaceDash(dynamic value) {
+    if (value == "--" || value == "-") {
+      return "";
+    }
+    return value?.toString() ?? "";
   }
 }

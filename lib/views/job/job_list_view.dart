@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -75,6 +77,9 @@ class _JobListViewState extends State<JobListView>
         siteType: _selectedJobType,
         tenantId: tenantId,
       );
+
+      // Process B2B data
+      _processB2BData(jobs);
 
       setState(() {
         _jobs = jobs;
@@ -420,9 +425,9 @@ class _JobListViewState extends State<JobListView>
     }
 
     final filteredJobs = _jobs.where((job) {
-      final jobId = job.no.toLowerCase();
-      final pickup = job.pickup.toLowerCase();
-      final drop = job.drop.toLowerCase();
+      final jobId = job.no?.toLowerCase() ?? '';
+      final pickup = job.pickup?.toLowerCase() ?? '';
+      final drop = job.drop?.toLowerCase() ?? '';
       final query = _searchQuery.toLowerCase();
       return jobId.contains(query) ||
           pickup.contains(query) ||
@@ -491,30 +496,106 @@ class _JobListViewState extends State<JobListView>
         itemCount: filteredJobs.length,
         itemBuilder: (context, index) {
           final job = filteredJobs[index];
+          final hasB2B = _hasValidB2B(job) && job.b2bData != null;
+
           return GestureDetector(
             onLongPress: () => _onJobCardLongPress(context, job, colorScheme),
-            child: _buildJobCard(context, job, colorScheme),
+            child: hasB2B
+                ? _buildSwipeableJobCard(context, job, colorScheme)
+                : _buildJobCard(context, job, colorScheme),
           );
         },
       ),
     );
   }
 
-  Widget _buildJobCard(BuildContext context, Job job, ColorScheme colorScheme) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final statusColor = _getStatusColor(_selectedStatus);
-    final isHMS = _selectedJobType == 'HMS';
+  Widget _buildSwipeableJobCard(
+    BuildContext context,
+    Job job,
+    ColorScheme colorScheme,
+  ) {
+    final b2bColor = const Color(0xFFFF6B35);
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
+      height: 300.h, // Increased height to accommodate action buttons
+      child: Stack(
+        children: [
+          PageView(
+            children: [
+              _buildSingleJobCard(context, job, colorScheme, isMainCard: true),
+              if (job.b2bData != null)
+                _buildSingleJobCard(
+                  context,
+                  job.b2bData!,
+                  colorScheme,
+                  isMainCard: false,
+                ),
+            ],
+          ),
+          // Swipe indicator
+          Positioned(
+            bottom: 8.h,
+            right: 16.w,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: b2bColor.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.swipe, size: 12.sp, color: Colors.white),
+                  SizedBox(width: 4.w),
+                  Text(
+                    'Swipe for B2B',
+                    style: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSingleJobCard(
+    BuildContext context,
+    Job job,
+    ColorScheme colorScheme, {
+    required bool isMainCard,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statusColor = _getStatusColor(_selectedStatus);
+    final isHMS = _selectedJobType == 'HMS';
+    final hasB2B = !isMainCard || _hasValidB2B(job);
+    final b2bColor = const Color(0xFFFF6B35);
+    final cardColor = isMainCard ? statusColor : b2bColor;
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: cardColor.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.grey.shade700.withValues(alpha: 01)
-                : Colors.grey.shade400.withValues(alpha: 1),
+                ? Colors.grey.shade700.withValues(alpha: 0.3)
+                : Colors.grey.shade400.withValues(alpha: 0.3),
             blurRadius: 8,
             spreadRadius: 0,
             offset: const Offset(1, 2),
@@ -528,13 +609,13 @@ class _JobListViewState extends State<JobListView>
           borderRadius: BorderRadius.circular(18.r),
           child: Column(
             children: [
-              // Premium Header with gradient and status indicator
+              // Header
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      statusColor.withValues(alpha: 0.12),
-                      statusColor.withValues(alpha: 0.04),
+                      cardColor.withValues(alpha: 0.12),
+                      cardColor.withValues(alpha: 0.04),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -544,7 +625,7 @@ class _JobListViewState extends State<JobListView>
                     topRight: Radius.circular(18.r),
                   ),
                   border: Border(
-                    left: BorderSide(color: statusColor, width: 3.5),
+                    left: BorderSide(color: cardColor, width: 3.5),
                   ),
                 ),
                 padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 6.h),
@@ -556,9 +637,17 @@ class _JobListViewState extends State<JobListView>
                         children: [
                           Row(
                             children: [
+                              if (!isMainCard) ...[
+                                Icon(
+                                  CupertinoIcons.link,
+                                  size: 12.sp,
+                                  color: b2bColor,
+                                ),
+                                SizedBox(width: 4.w),
+                              ],
                               Flexible(
                                 child: Text(
-                                  job.no,
+                                  job.no ?? '',
                                   style: GoogleFonts.inter(
                                     fontSize: 14.sp,
                                     fontWeight: FontWeight.w900,
@@ -568,11 +657,53 @@ class _JobListViewState extends State<JobListView>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (isMainCard && hasB2B) ...[
+                                SizedBox(width: 6.w),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w,
+                                    vertical: 3.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        b2bColor.withValues(alpha: 0.2),
+                                        b2bColor.withValues(alpha: 0.1),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border: Border.all(
+                                      color: b2bColor.withValues(alpha: 0.4),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.link,
+                                        size: 10.sp,
+                                        color: b2bColor,
+                                      ),
+                                      SizedBox(width: 3.w),
+                                      Text(
+                                        'B2B',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 9.sp,
+                                          fontWeight: FontWeight.w900,
+                                          color: b2bColor,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           SizedBox(height: 2.h),
                           Text(
-                            job.dateTime,
+                            job.dateTime ?? '',
                             style: GoogleFonts.inter(
                               fontSize: 10.sp,
                               fontWeight: FontWeight.w700,
@@ -594,13 +725,13 @@ class _JobListViewState extends State<JobListView>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            statusColor.withValues(alpha: 0.15),
-                            statusColor.withValues(alpha: 0.08),
+                            cardColor.withValues(alpha: 0.15),
+                            cardColor.withValues(alpha: 0.08),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(12.r),
                         border: Border.all(
-                          color: statusColor.withValues(alpha: 0.3),
+                          color: cardColor.withValues(alpha: 0.3),
                           width: 1.5,
                         ),
                       ),
@@ -611,11 +742,11 @@ class _JobListViewState extends State<JobListView>
                             width: 8.w,
                             height: 8.h,
                             decoration: BoxDecoration(
-                              color: statusColor,
+                              color: cardColor,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: statusColor.withValues(alpha: 0.4),
+                                  color: cardColor.withValues(alpha: 0.4),
                                   blurRadius: 6,
                                   spreadRadius: 1,
                                 ),
@@ -624,11 +755,13 @@ class _JobListViewState extends State<JobListView>
                           ),
                           SizedBox(width: 7.w),
                           Text(
-                            _getStatusLabel(_selectedStatus),
+                            isMainCard
+                                ? _getStatusLabel(_selectedStatus)
+                                : 'B2B',
                             style: GoogleFonts.inter(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w800,
-                              color: statusColor,
+                              color: cardColor,
                               letterSpacing: 0.3,
                             ),
                           ),
@@ -638,35 +771,33 @@ class _JobListViewState extends State<JobListView>
                   ],
                 ),
               ),
-              // Card Body
+              // Body
               Padding(
                 padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 8.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Locations with modern icons
                     _buildLocationRow(
                       icon: Icons.location_on_outlined,
                       label: 'From',
-                      value: job.pickOrgShortCode.isNotEmpty
-                          ? '${job.pickOrgShortCode} - ${job.pickup}'
-                          : job.pickup,
+                      value: job.pickOrgShortCode?.isNotEmpty == true
+                          ? '${job.pickOrgShortCode} - ${job.pickup ?? ''}'
+                          : job.pickup ?? '',
                       color: Colors.grey[700],
                     ),
                     SizedBox(height: 6.h),
                     _buildLocationRow(
                       icon: Icons.location_on,
                       label: 'To',
-                      value: job.dropOrgShortCode.isNotEmpty
-                          ? '${job.dropOrgShortCode} - ${job.drop}'
-                          : job.drop,
-                      color: statusColor,
+                      value: job.dropOrgShortCode?.isNotEmpty == true
+                          ? '${job.dropOrgShortCode} - ${job.drop ?? ''}'
+                          : job.drop ?? '',
+                      color: cardColor,
                     ),
                     SizedBox(height: 8.h),
-                    // Job Details Grid - Modern design
                     _buildJobDetailsGrid(job, isHMS),
-                    // Quick Actions Bar
                     SizedBox(height: 6.h),
+                    // Quick Actions Bar
                     Row(
                       children: [
                         Expanded(
@@ -695,7 +826,7 @@ class _JobListViewState extends State<JobListView>
                           child: _buildQuickActionButton(
                             icon: Icons.arrow_forward_ios_rounded,
                             label: 'Details',
-                            color: statusColor,
+                            color: cardColor,
                             onTap: () => _onJobCardTap(context, job),
                           ),
                         ),
@@ -708,6 +839,523 @@ class _JobListViewState extends State<JobListView>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildJobCard(BuildContext context, Job job, ColorScheme colorScheme) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statusColor = _getStatusColor(_selectedStatus);
+    final isHMS = _selectedJobType == 'HMS';
+    final hasB2B = _hasValidB2B(job);
+    final b2bColor = const Color(0xFFFF6B35); // Orange color for B2B indicator
+
+    return Column(
+      children: [
+        Container(
+          margin: EdgeInsets.only(bottom: hasB2B ? 0 : 12.h),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(18.r),
+            // Add subtle border for B2B jobs
+            border: hasB2B
+                ? Border.all(color: b2bColor.withValues(alpha: 0.3), width: 1.5)
+                : null,
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.grey.shade700.withValues(alpha: 01)
+                    : Colors.grey.shade400.withValues(alpha: 1),
+                blurRadius: 8,
+                spreadRadius: 0,
+                offset: const Offset(1, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _onJobCardTap(context, job),
+              borderRadius: BorderRadius.circular(18.r),
+              child: Column(
+                children: [
+                  // Premium Header with gradient and status indicator
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          statusColor.withValues(alpha: 0.12),
+                          statusColor.withValues(alpha: 0.04),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(18.r),
+                        topRight: Radius.circular(18.r),
+                      ),
+                      border: Border(
+                        left: BorderSide(color: statusColor, width: 3.5),
+                      ),
+                    ),
+                    padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 6.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      job.no?.toString() ?? '',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.2,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  // B2B Indicator Badge
+                                  if (hasB2B) ...[
+                                    SizedBox(width: 6.w),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 6.w,
+                                        vertical: 3.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            b2bColor.withValues(alpha: 0.2),
+                                            b2bColor.withValues(alpha: 0.1),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        border: Border.all(
+                                          color: b2bColor.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.link,
+                                            size: 10.sp,
+                                            color: b2bColor,
+                                          ),
+                                          SizedBox(width: 3.w),
+                                          Text(
+                                            'B2B',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 9.sp,
+                                              fontWeight: FontWeight.w900,
+                                              color: b2bColor,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                job.dateTime ?? '',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Status Badge
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 6.h,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                statusColor.withValues(alpha: 0.15),
+                                statusColor.withValues(alpha: 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(
+                              color: statusColor.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: statusColor.withValues(alpha: 0.4),
+                                      blurRadius: 6,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 7.w),
+                              Text(
+                                _getStatusLabel(_selectedStatus),
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: statusColor,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Card Body
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 8.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Locations with modern icons
+                        _buildLocationRow(
+                          icon: Icons.location_on_outlined,
+                          label: 'From',
+                          value: job.pickOrgShortCode?.isNotEmpty == true
+                              ? '${job.pickOrgShortCode} - ${job.pickup ?? ''}'
+                              : job.pickup ?? '',
+                          color: Colors.grey[700],
+                        ),
+                        SizedBox(height: 6.h),
+                        _buildLocationRow(
+                          icon: Icons.location_on,
+                          label: 'To',
+                          value: job.dropOrgShortCode?.isNotEmpty == true
+                              ? '${job.dropOrgShortCode} - ${job.drop ?? ''}'
+                              : job.drop ?? '',
+                          color: statusColor,
+                        ),
+
+                        // B2B Linked Job Section
+                        SizedBox(height: 8.h),
+                        // Job Details Grid - Modern design
+                        _buildJobDetailsGrid(job, isHMS),
+                        // Quick Actions Bar
+                        SizedBox(height: 6.h),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildQuickActionButton(
+                                icon: Icons.image_outlined,
+                                label: 'Upload',
+                                color: Colors.blue,
+                                onTap: () => _showSnackbar(
+                                  context,
+                                  'Image upload coming soon',
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 3.w),
+                            Expanded(
+                              child: _buildQuickActionButton(
+                                icon: Icons.edit_outlined,
+                                label: 'Edit',
+                                color: Colors.orange,
+                                onTap: () => _onJobCardLongPress(
+                                  context,
+                                  job,
+                                  colorScheme,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 3.w),
+                            Expanded(
+                              child: _buildQuickActionButton(
+                                icon: Icons.arrow_forward_ios_rounded,
+                                label: 'Details',
+                                color: statusColor,
+                                onTap: () => _onJobCardTap(context, job),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // B2B Linked Job Card
+        if (hasB2B)
+          _buildB2BLinkedJobCard(
+            context,
+            job,
+            colorScheme,
+            statusColor,
+            isDark,
+            isHMS,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildB2BLinkedJobCard(
+    BuildContext context,
+    Job job,
+    ColorScheme colorScheme,
+    Color statusColor,
+    bool isDark,
+    bool isHMS,
+  ) {
+    final b2bColor = const Color(0xFFFF6B35);
+    final b2bJobNo = job.jobB2B;
+
+    return Column(
+      children: [
+        SizedBox(height: 16.h),
+        Stack(
+          children: [
+            // Main B2B Card (offset down)
+            Transform.translate(
+              offset: const Offset(0, -6),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.only(top: 8.h),
+                      width: 16.w,
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          // Navigate to B2B job details
+                          // For now, just show a snackbar since we'd need to fetch the full B2B job data
+                          _showSnackbar(context, 'Opening B2B Job: $b2bJobNo');
+                        },
+                        borderRadius: BorderRadius.circular(18.r),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(18.r),
+                            border: Border.all(
+                              color: b2bColor.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark
+                                    ? Colors.grey.shade700.withValues(
+                                        alpha: 0.3,
+                                      )
+                                    : Colors.grey.shade400.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                blurRadius: 8,
+                                spreadRadius: 0,
+                                offset: const Offset(1, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Header
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      b2bColor.withValues(alpha: 0.12),
+                                      b2bColor.withValues(alpha: 0.04),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(18.r),
+                                    topRight: Radius.circular(18.r),
+                                  ),
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: b2bColor,
+                                      width: 3.5,
+                                    ),
+                                  ),
+                                ),
+                                padding: EdgeInsets.fromLTRB(
+                                  10.w,
+                                  6.h,
+                                  10.w,
+                                  6.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.link,
+                                            size: 14.sp,
+                                            color: b2bColor,
+                                          ),
+                                          SizedBox(width: 4.w),
+                                          Text(
+                                            'B2B Linked:',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: b2bColor,
+                                            ),
+                                          ),
+                                          SizedBox(width: 6.w),
+                                          Flexible(
+                                            child: Text(
+                                              b2bJobNo ?? '',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14.sp,
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: -0.2,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 6.w,
+                                        vertical: 4.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            b2bColor.withValues(alpha: 0.2),
+                                            b2bColor.withValues(alpha: 0.1),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        border: Border.all(
+                                          color: b2bColor.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _selectedJobType,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 9.sp,
+                                          fontWeight: FontWeight.w900,
+                                          color: b2bColor,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Body
+                              Padding(
+                                padding: EdgeInsets.all(10.w),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          size: 14.sp,
+                                          color: b2bColor.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                        Expanded(
+                                          child: Text(
+                                            'Tap to view linked job details',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? Colors.grey[400]
+                                                  : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.arrow_forward_ios_rounded,
+                                          size: 12.sp,
+                                          color: b2bColor,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Chain of link icons
+            Transform.translate(
+              offset: Offset(8.w, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(
+                  5,
+                  (index) => Transform.translate(
+                    offset: const Offset(0, -25),
+                    child: Transform.rotate(
+                      angle: -math.pi / 4,
+                      child: Icon(
+                        CupertinoIcons.link,
+                        size: 18.sp,
+                        color: b2bColor.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -842,15 +1490,12 @@ class _JobListViewState extends State<JobListView>
             },
           ];
 
-    return Wrap(
-      spacing: 4.w,
-      runSpacing: 5.h,
-      alignment: WrapAlignment.start,
+    return Row(
       children: items.map((item) {
         final color = item['color'] as Color;
-        return SizedBox(
-          width: (MediaQuery.of(context).size.width - 52.w) / 3,
+        return Expanded(
           child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 2.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -987,6 +1632,93 @@ class _JobListViewState extends State<JobListView>
 
   void _onJobCardTap(BuildContext context, Job job) {
     context.push('/job-details', extra: job);
+  }
+
+  bool _hasValidB2B(Job job) {
+    final b2bValue = job.jobB2B?.trim() ?? '';
+    return b2bValue.isNotEmpty && b2bValue != '0' && b2bValue != job.no;
+  }
+
+  bool _hasValidB2BForJob(Job? job) {
+    if (job == null) return false;
+    final b2bValue = job.jobB2B?.trim() ?? '';
+    return b2bValue.isNotEmpty && b2bValue != '0' && b2bValue != job.no;
+  }
+
+  void _processB2BData(List<Job> dataList) {
+    List<List<String>> linkedJob = [];
+
+    debugPrint('=== B2B Processing Debug ===');
+    debugPrint('Processing ${dataList.length} jobs for B2B linking');
+
+    // First, identify all B2B pairs and create the links
+    for (var item in dataList) {
+      if (_hasValidB2BForJob(item)) {
+        debugPrint('Job ${item.no}: JobB2B = "${item.jobB2B}"');
+
+        // Find the B2B partner job
+        Job? b2bItem = dataList.cast<Job?>().firstWhere(
+          (v) => v?.no == item.jobB2B,
+          orElse: () => null,
+        );
+
+        if (b2bItem != null) {
+          debugPrint('  Found B2B partner: ${b2bItem.no}');
+
+          // Always attach the B2B data to the current job
+          item.b2bData = b2bItem;
+
+          // Add to linked jobs list for deduplication
+          linkedJob.add([item.no ?? '', item.jobB2B ?? '']);
+        } else {
+          debugPrint('  B2B partner ${item.jobB2B} not found in job list');
+        }
+      }
+    }
+
+    debugPrint('Linked jobs before deduplication: $linkedJob');
+
+    // Remove duplicate pairs and determine which jobs to keep
+    Set<String> jobsToRemove = <String>{};
+    Set<String> processedPairs = <String>{};
+
+    for (var link in linkedJob) {
+      String job1 = link[0];
+      String job2 = link[1];
+
+      // Create a consistent pair identifier (sort to avoid duplicates)
+      List<String> sortedPair = [job1, job2]..sort();
+      String pairKey = '${sortedPair[0]}-${sortedPair[1]}';
+
+      if (!processedPairs.contains(pairKey)) {
+        processedPairs.add(pairKey);
+
+        // Keep the first job (job1) and mark the second job (job2) for removal
+        jobsToRemove.add(job2);
+        debugPrint('B2B Pair: Keep $job1, Remove $job2');
+      }
+    }
+
+    debugPrint('Jobs to remove from main list: $jobsToRemove');
+
+    // Remove the secondary jobs from the main list
+    int originalCount = dataList.length;
+    dataList.removeWhere((v) => jobsToRemove.contains(v.no));
+
+    debugPrint(
+      'Removed ${originalCount - dataList.length} jobs from main list',
+    );
+    debugPrint('Final job count after B2B processing: ${dataList.length}');
+
+    // Debug: Show final B2B structure
+    for (var job in dataList) {
+      if (job.b2bData != null) {
+        debugPrint('✅ Job ${job.no} linked with B2B job: ${job.b2bData?.no}');
+      } else {
+        debugPrint('   Job ${job.no} - no B2B link');
+      }
+    }
+    debugPrint('=== B2B Processing Complete ===');
   }
 
   void _onJobCardLongPress(

@@ -4,6 +4,7 @@ import '../views/login/login_view.dart';
 import '../views/register/register_view.dart';
 import '../views/incentive/incentive_report_view.dart';
 import '../views/job/job_list_view.dart';
+import '../views/job/job_details_view.dart';
 import '../views/request/request_view.dart';
 import '../views/request/rest_request_view.dart';
 import '../views/request/return_to_base_view.dart';
@@ -17,6 +18,7 @@ import '../views/safety/safety_question_view.dart';
 import '../views/vehicle/select_vehicle_view.dart';
 import '../views/pti/pti_page_view.dart';
 import '../views/notification/notification_view.dart';
+import '../models/job_model.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -110,6 +112,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationView(),
+    ),
+    GoRoute(
+      path: '/job-details',
+      builder: (context, state) => JobDetailsView(job: state.extra as Job),
     ),
   ],
 );

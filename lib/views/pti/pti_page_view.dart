@@ -25,6 +25,8 @@ class _PTIPageViewState extends State<PTIPageView> {
   late List<String> _categories;
   late Map<String, String>
   _selectedValues; // Maps "Category|SubCategory" to selected value
+  bool _hasShownSkipDialog = false;
+  bool _userChoseToRedoPTI = false;
 
   @override
   void initState() {
@@ -406,6 +408,9 @@ class _PTIPageViewState extends State<PTIPageView> {
                     height: 48.h,
                     child: OutlinedButton(
                       onPressed: () {
+                        setState(() {
+                          _userChoseToRedoPTI = true;
+                        });
                         Navigator.pop(context);
                         // Close the dialog and allow user to redo PTI
                       },
@@ -545,7 +550,8 @@ class _PTIPageViewState extends State<PTIPageView> {
             _categories = categoryItems.keys.toList();
 
             // If PTI is already done for the day, show skip dialog
-            if (isDoneForDay) {
+            if (isDoneForDay && !_hasShownSkipDialog && !_userChoseToRedoPTI) {
+              _hasShownSkipDialog = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
                   _showSkipOrRedoDialog();

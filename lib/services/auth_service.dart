@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'api/auth_api.dart';
 import 'storage/login_cache_service.dart';
 import '../models/login_response_model.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final AuthApi _authApi = AuthApi();
@@ -18,13 +19,22 @@ class AuthService {
 
       // Check if login was successful
       if (response.result && response.error == null) {
-        // Cache the login data
+        debugPrint(
+          '✅ AuthService: Login successful - TenantId: ${response.tenantId}',
+        );
+        final responseJson = response.toJson();
+        debugPrint(
+          '📦 AuthService: Response JSON keys: ${responseJson.keys.toList()}',
+        );
+
+        // Cache the complete login response
         await _cacheService.cacheLoginData(
           driverId: response.driverId,
           mobile: response.mobile,
           name: response.name,
           email: response.email,
           imei: response.imei,
+          userInfo: responseJson, // Save complete response
         );
 
         // Cache PTI status
@@ -61,13 +71,14 @@ class AuthService {
 
       // Check if registration was successful
       if (response.result && response.error == null) {
-        // Cache the login data
+        // Cache the complete login response
         await _cacheService.cacheLoginData(
           driverId: response.driverId,
           mobile: response.mobile,
           name: response.name,
           email: response.email,
           imei: response.imei,
+          userInfo: response.toJson(), // Save complete response
         );
       }
 

@@ -509,7 +509,7 @@ class ProfileView extends ConsumerWidget {
           child: _buildQuickInfoCard(
             context: context,
             label: 'License',
-            value: '${userData['licenceNo']}'.substring(0, 8),
+            value: '${userData['licenceNo']}'.substring(0, 2),
             icon: Icons.description_outlined,
             colorScheme: colorScheme,
             suffix: '...',

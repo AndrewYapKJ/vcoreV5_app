@@ -62,6 +62,17 @@ class LoginCacheService {
             'imei': imei,
           };
 
+      debugPrint(
+        '💾 Caching userInfo with keys: ${finalUserInfo.keys.toList()}',
+      );
+      if (finalUserInfo.containsKey('TenantId')) {
+        debugPrint(
+          '✅ TenantId found in cache data: ${finalUserInfo['TenantId']}',
+        );
+      } else {
+        debugPrint('⚠️ TenantId NOT found in cache data!');
+      }
+
       await _prefs.setString(_userInfoKey, jsonEncode(finalUserInfo));
       await _prefs.setString(
         _loginDataKey,
@@ -302,18 +313,96 @@ class LoginCacheService {
       }
 
       final userInfo = getCachedUserInfo();
-      if (userInfo != null && userInfo.containsKey('driverId')) {
-        return userInfo['driverId'] as String?;
+      if (userInfo != null) {
+        // Check both uppercase and lowercase keys for compatibility
+        if (userInfo.containsKey('DriverID')) {
+          return userInfo['DriverID'] as String?;
+        }
+        if (userInfo.containsKey('driverId')) {
+          return userInfo['driverId'] as String?;
+        }
       }
 
       final loginData = getCachedLoginData();
-      if (loginData != null && loginData.containsKey('driverId')) {
-        return loginData['driverId'] as String?;
+      if (loginData != null) {
+        if (loginData.containsKey('DriverID')) {
+          return loginData['DriverID'] as String?;
+        }
+        if (loginData.containsKey('driverId')) {
+          return loginData['driverId'] as String?;
+        }
       }
 
       return null;
     } catch (e) {
       debugPrint('Error retrieving cached driver ID: $e');
+      return null;
+    }
+  }
+
+  /// Get cached tenant ID
+  String? getCachedTenantId() {
+    try {
+      if (!isSessionValid()) {
+        debugPrint('⚠️ Session invalid, returning null for tenant ID');
+        return null;
+      }
+
+      final userInfo = getCachedUserInfo();
+      if (userInfo != null) {
+        debugPrint('📦 UserInfo keys: ${userInfo.keys.toList()}');
+        // Check both uppercase and lowercase keys for compatibility
+        if (userInfo.containsKey('TenantId')) {
+          final tenantId = userInfo['TenantId'] as String?;
+          debugPrint('✅ Found TenantId in userInfo: $tenantId');
+          return tenantId;
+        }
+        if (userInfo.containsKey('tenantId')) {
+          final tenantId = userInfo['tenantId'] as String?;
+          debugPrint('✅ Found tenantId in userInfo: $tenantId');
+          return tenantId;
+        }
+      }
+
+      final loginData = getCachedLoginData();
+      if (loginData != null) {
+        debugPrint('📦 LoginData keys: ${loginData.keys.toList()}');
+        if (loginData.containsKey('TenantId')) {
+          final tenantId = loginData['TenantId'] as String?;
+          debugPrint('✅ Found TenantId in loginData: $tenantId');
+          return tenantId;
+        }
+        if (loginData.containsKey('tenantId')) {
+          final tenantId = loginData['tenantId'] as String?;
+          debugPrint('✅ Found tenantId in loginData: $tenantId');
+          return tenantId;
+        }
+      }
+
+      // Default tenant ID if not found
+      debugPrint('⚠️ TenantId not found in cache, defaulting to "1"');
+      return '1';
+    } catch (e) {
+      debugPrint('❌ Error retrieving cached tenant ID: $e');
+      return '1';
+    }
+  }
+
+  /// Get cached vehicle ID (from selected vehicle)
+  String? getCachedVehicleId() {
+    try {
+      if (!isSessionValid()) {
+        return null;
+      }
+
+      final vehicleData = getCachedVehicleSelection();
+      if (vehicleData != null && vehicleData.containsKey('vehicleId')) {
+        return vehicleData['vehicleId'] as String?;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving cached vehicle ID: $e');
       return null;
     }
   }

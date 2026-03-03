@@ -1,10 +1,38 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/login_response_model.dart';
+import '../services/storage/login_cache_service.dart';
+import 'package:flutter/foundation.dart';
 
 // Simple mutable state provider using notifier pattern
 class _UserNotifierImpl extends Notifier<LoginResponse?> {
   @override
-  LoginResponse? build() => null;
+  LoginResponse? build() {
+    // Load user data from cache on initialization
+    _loadUserFromCache();
+    return null;
+  }
+
+  Future<void> _loadUserFromCache() async {
+    debugPrint('🔄 UserProvider: Loading user from cache...');
+    final cacheService = LoginCacheService();
+    await cacheService.initialize();
+
+    if (cacheService.isSessionValid()) {
+      debugPrint('✅ UserProvider: Session is valid');
+      final cachedUserInfo = cacheService.getCachedUserInfo();
+      if (cachedUserInfo != null) {
+        debugPrint('📦 UserProvider: Found cached user info with keys: ${cachedUserInfo.keys.toList()}');
+        // Reconstruct LoginResponse from cached data
+        final loginResponse = LoginResponse.fromJson(cachedUserInfo);
+        state = loginResponse;
+        debugPrint('✅ UserProvider: User data loaded - Name: ${loginResponse.name}, TenantId: ${loginResponse.tenantId}');
+      } else {
+        debugPrint('⚠️ UserProvider: Cached user info is null');
+      }
+    } else {
+      debugPrint('⚠️ UserProvider: Session is invalid');
+    }
+  }
 }
 
 /// Simple user data provider

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vcore_v5_app/models/job_model.dart';
+import 'package:vcore_v5_app/services/job_service.dart';
+import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class JobListView extends StatefulWidget {
   const JobListView({super.key});
@@ -14,9 +18,15 @@ class _JobListViewState extends State<JobListView>
   late TabController _jobTypeTabController;
   late TabController _statusTabController;
   final TextEditingController _searchController = TextEditingController();
+  final JobService _jobService = JobService();
+
   String _selectedJobType = 'HMS'; // HMS or TMS
   String _selectedStatus = 'pending'; // pending, in-progress, completed
   String _searchQuery = '';
+
+  List<Job> _jobs = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -25,17 +35,57 @@ class _JobListViewState extends State<JobListView>
     _statusTabController = TabController(length: 3, vsync: this);
 
     _jobTypeTabController.addListener(() {
-      setState(() {
-        _selectedJobType = _jobTypeTabController.index == 0 ? 'HMS' : 'TMS';
-      });
+      if (!_jobTypeTabController.indexIsChanging) {
+        setState(() {
+          _selectedJobType = _jobTypeTabController.index == 0 ? 'HMS' : 'TMS';
+        });
+        _fetchJobs();
+      }
     });
 
     _statusTabController.addListener(() {
-      final statuses = ['pending', 'in-progress', 'completed'];
-      setState(() {
-        _selectedStatus = statuses[_statusTabController.index];
-      });
+      if (!_statusTabController.indexIsChanging) {
+        final statuses = ['pending', 'in-progress', 'completed'];
+        setState(() {
+          _selectedStatus = statuses[_statusTabController.index];
+        });
+        _fetchJobs();
+      }
     });
+
+    // Initial fetch
+    _fetchJobs();
+  }
+
+  Future<void> _fetchJobs() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final driverId = LoginCacheService().getCachedDriverId() ?? '';
+      final tenantId = LoginCacheService().getCachedTenantId() ?? '';
+      final pm = LoginCacheService().getCachedVehicleId() ?? '';
+
+      final jobs = await _jobService.getJobs(
+        driverId: driverId,
+        status: _selectedStatus,
+        pm: pm,
+        siteType: _selectedJobType,
+        tenantId: tenantId,
+      );
+
+      setState(() {
+        _jobs = jobs;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -314,14 +364,69 @@ class _JobListViewState extends State<JobListView>
 
   Widget _buildJobList(BuildContext context, ColorScheme colorScheme) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Sample data - replace with actual data from provider
-    final mockJobs = _getMockJobs(_selectedJobType, _selectedStatus);
 
-    final filteredJobs = mockJobs.where((job) {
-      final jobId = job['id'].toString().toLowerCase();
-      final location = job['location'].toString().toLowerCase();
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: colorScheme.primary),
+            SizedBox(height: 16.h),
+            Text(
+              'Loading jobs...',
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64.sp, color: Colors.red),
+            SizedBox(height: 16.h),
+            Text(
+              'Error loading jobs',
+              style: GoogleFonts.inter(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32.w),
+              child: Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            ElevatedButton(onPressed: _fetchJobs, child: Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    final filteredJobs = _jobs.where((job) {
+      final jobId = job.no.toLowerCase();
+      final pickup = job.pickup.toLowerCase();
+      final drop = job.drop.toLowerCase();
       final query = _searchQuery.toLowerCase();
-      return jobId.contains(query) || location.contains(query);
+      return jobId.contains(query) ||
+          pickup.contains(query) ||
+          drop.contains(query);
     }).toList();
 
     if (filteredJobs.isEmpty) {
@@ -379,27 +484,26 @@ class _JobListViewState extends State<JobListView>
       );
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      itemCount: filteredJobs.length,
-      itemBuilder: (context, index) {
-        final job = filteredJobs[index];
-        return GestureDetector(
-          onLongPress: () => _onJobCardLongPress(context, job, colorScheme),
-          child: _buildJobCard(context, job, colorScheme),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _fetchJobs,
+      child: ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        itemCount: filteredJobs.length,
+        itemBuilder: (context, index) {
+          final job = filteredJobs[index];
+          return GestureDetector(
+            onLongPress: () => _onJobCardLongPress(context, job, colorScheme),
+            child: _buildJobCard(context, job, colorScheme),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildJobCard(
-    BuildContext context,
-    Map<String, dynamic> job,
-    ColorScheme colorScheme,
-  ) {
+  Widget _buildJobCard(BuildContext context, Job job, ColorScheme colorScheme) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final statusColor = _getStatusColor(job['currentStatus']);
-    final isHMS = job['type'] == 'HMS';
+    final statusColor = _getStatusColor(_selectedStatus);
+    final isHMS = _selectedJobType == 'HMS';
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
@@ -452,64 +556,26 @@ class _JobListViewState extends State<JobListView>
                         children: [
                           Row(
                             children: [
-                              Text(
-                                job['id'],
-                                style: GoogleFonts.inter(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w900,
-
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                              SizedBox(width: 8.w),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 10.w,
-                                  vertical: 5.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      isHMS
-                                          ? const Color(0xFFE8F4FD)
-                                          : const Color(0xFFFEEEF7),
-                                      isHMS
-                                          ? const Color(0xFFF0F8FF)
-                                          : const Color(0xFFFFF5FB),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(
-                                    color: isHMS
-                                        ? const Color(
-                                            0xFF1976D2,
-                                          ).withValues(alpha: 0.2)
-                                        : const Color(
-                                            0xFFC2185B,
-                                          ).withValues(alpha: 0.2),
-                                    width: 1,
-                                  ),
-                                ),
+                              Flexible(
                                 child: Text(
-                                  job['type'],
+                                  job.no,
                                   style: GoogleFonts.inter(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w800,
-                                    color: isHMS
-                                        ? const Color(0xFF1976D2)
-                                        : const Color(0xFFC2185B),
-                                    letterSpacing: 0.6,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.2,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 6.h),
+                          SizedBox(height: 2.h),
                           Text(
-                            _formatTimestamp(job['timestamp']),
+                            job.dateTime,
                             style: GoogleFonts.inter(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w700,
                               color: isDark
                                   ? Colors.grey[400]
                                   : Colors.grey[600],
@@ -522,8 +588,8 @@ class _JobListViewState extends State<JobListView>
                     // Status Badge
                     Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 10.h,
+                        horizontal: 8.w,
+                        vertical: 6.h,
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -558,7 +624,7 @@ class _JobListViewState extends State<JobListView>
                           ),
                           SizedBox(width: 7.w),
                           Text(
-                            job['currentStatus'],
+                            _getStatusLabel(_selectedStatus),
                             style: GoogleFonts.inter(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w800,
@@ -582,14 +648,18 @@ class _JobListViewState extends State<JobListView>
                     _buildLocationRow(
                       icon: Icons.location_on_outlined,
                       label: 'From',
-                      value: job['pickupFrom'],
+                      value: job.pickOrgShortCode.isNotEmpty
+                          ? '${job.pickOrgShortCode} - ${job.pickup}'
+                          : job.pickup,
                       color: Colors.grey[700],
                     ),
                     SizedBox(height: 6.h),
                     _buildLocationRow(
                       icon: Icons.location_on,
                       label: 'To',
-                      value: job['deliveryTo'],
+                      value: job.dropOrgShortCode.isNotEmpty
+                          ? '${job.dropOrgShortCode} - ${job.drop}'
+                          : job.drop,
                       color: statusColor,
                     ),
                     SizedBox(height: 8.h),
@@ -643,19 +713,28 @@ class _JobListViewState extends State<JobListView>
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Not Started':
+      case 'pending':
         return const Color(0xFFFF6B6B);
-      case 'In Progress':
+      case 'in-progress':
         return const Color(0xFFFFA94D);
-      case 'Completed':
+      case 'completed':
         return const Color(0xFF51CF66);
       default:
         return Colors.grey;
     }
   }
 
-  String _formatTimestamp(String timestamp) {
-    return timestamp; // Format as needed
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'pending':
+        return 'Not Started';
+      case 'in-progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      default:
+        return status;
+    }
   }
 
   Widget _buildLocationRow({
@@ -720,44 +799,44 @@ class _JobListViewState extends State<JobListView>
     );
   }
 
-  Widget _buildJobDetailsGrid(Map<String, dynamic> job, bool isHMS) {
+  Widget _buildJobDetailsGrid(Job job, bool isHMS) {
     final items = isHMS
         ? [
             {
-              'label': 'Trailer',
-              'value': job['trailer'],
+              'label': 'Truck',
+              'value': job.truckNo,
               'icon': Icons.local_shipping,
               'color': const Color(0xFF3B82F6),
             },
             {
               'label': 'Container',
-              'value': job['container'],
+              'value': job.containerNo,
               'icon': Icons.inventory_2,
               'color': const Color(0xFF8B5CF6),
             },
             {
               'label': 'Seal',
-              'value': job['sealNo'],
+              'value': job.sealNo,
               'icon': Icons.lock,
               'color': const Color(0xFFEC4899),
             },
           ]
         : [
             {
-              'label': 'Vehicle',
-              'value': job['vehicle'],
+              'label': 'Truck',
+              'value': job.truckNo,
               'icon': Icons.directions_car,
               'color': const Color(0xFF3B82F6),
             },
             {
-              'label': 'Commodity',
-              'value': job['commodity'],
+              'label': 'Trailer',
+              'value': job.trailerNo,
               'icon': Icons.shopping_bag,
               'color': const Color(0xFF8B5CF6),
             },
             {
-              'label': 'Weight',
-              'value': job['weight'],
+              'label': 'Size',
+              'value': job.containerSize,
               'icon': Icons.scale,
               'color': const Color(0xFFEC4899),
             },
@@ -906,16 +985,16 @@ class _JobListViewState extends State<JobListView>
     );
   }
 
-  void _onJobCardTap(BuildContext context, Map<String, dynamic> job) {
-    _showSnackbar(context, 'Navigate to job details: ${job['id']}');
+  void _onJobCardTap(BuildContext context, Job job) {
+    context.push('/job-details', extra: job);
   }
 
   void _onJobCardLongPress(
     BuildContext context,
-    Map<String, dynamic> job,
+    Job job,
     ColorScheme colorScheme,
   ) {
-    _showSnackbar(context, 'Long press - Edit mode: ${job['id']}');
+    _showSnackbar(context, 'Long press - Edit mode: ${job.no}');
   }
 
   void _showSnackbar(BuildContext context, String message) {
@@ -927,102 +1006,5 @@ class _JobListViewState extends State<JobListView>
         margin: EdgeInsets.only(bottom: 20.h, left: 16.w, right: 16.w),
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getMockJobs(String jobType, String status) {
-    final allJobs = [
-      {
-        'id': 'TE-2508-0172-1-SIC1',
-        'type': 'HMS',
-        'pickupFrom': 'MOI FOODS MALAYSIA - LOT 40',
-        'deliveryTo': 'TOKOYARD SECTION 2 KL',
-        'timestamp': 'Aug 30, 09:53 AM',
-        'location': 'MOI FOODS TOKOYARD',
-        'trailer': 'MEDU1859499',
-        'container': 'CONT-12345',
-        'sealNo': 'SEAL-9876',
-        'size': '40\'',
-        'currentStatus': 'Not Started',
-      },
-      {
-        'id': 'TE-2508-0173-2-TST2',
-        'type': 'HMS',
-        'pickupFrom': 'PETRON STATION KL',
-        'deliveryTo': 'SELANGOR DEPOT',
-        'timestamp': 'Aug 30, 10:15 AM',
-        'location': 'PETRON SELANGOR',
-        'trailer': 'NAVIO37478',
-        'container': 'CONT-54321',
-        'sealNo': 'SEAL-1111',
-        'size': '20\'',
-        'currentStatus': 'In Progress',
-      },
-      {
-        'id': 'TE-2508-0174-3-TST3',
-        'type': 'TMS',
-        'pickupFrom': 'WAREHOUSE A JOHOR',
-        'deliveryTo': 'CUSTOMER B PENANG',
-        'timestamp': 'Aug 30, 11:30 AM',
-        'location': 'WAREHOUSE CUSTOMER B',
-        'vehicle': 'WX-2024-100',
-        'commodity': 'Electronics',
-        'weight': '2500 kg',
-        'rate': 'RM 500',
-        'currentStatus': 'Completed',
-      },
-      {
-        'id': 'TE-2508-0175-4-HMS4',
-        'type': 'HMS',
-        'pickupFrom': 'PORT KLANG',
-        'deliveryTo': 'BUKIT RAJA FACILITY',
-        'timestamp': 'Aug 30, 01:45 PM',
-        'location': 'PORT KLANG BUKIT RAJA',
-        'trailer': 'MEDU1859500',
-        'container': 'CONT-99999',
-        'sealNo': 'SEAL-2222',
-        'size': '40\'',
-        'currentStatus': 'Not Started',
-      },
-      {
-        'id': 'TE-2508-0176-5-TMS5',
-        'type': 'TMS',
-        'pickupFrom': 'FACTORY C KLANG',
-        'deliveryTo': 'RETAIL STORE KL',
-        'timestamp': 'Aug 30, 02:20 PM',
-        'location': 'FACTORY RETAIL STORE',
-        'vehicle': 'WX-2024-101',
-        'commodity': 'Furniture',
-        'weight': '3000 kg',
-        'rate': 'RM 600',
-        'currentStatus': 'Not Started',
-      },
-      {
-        'id': 'TE-2508-0177-6-HMS6',
-        'type': 'HMS',
-        'pickupFrom': 'KUALA LUMPUR PORT',
-        'deliveryTo': 'DISTRIBUTION CENTER SHAH ALAM',
-        'timestamp': 'Aug 30, 03:00 PM',
-        'location': 'KL PORT SHAH ALAM',
-        'trailer': 'NAVIO37479',
-        'container': 'CONT-77777',
-        'sealNo': 'SEAL-3333',
-        'size': '20\'',
-        'currentStatus': 'In Progress',
-      },
-    ];
-
-    return allJobs.where((job) {
-      if (job['type'] != jobType) return false;
-      if (job['currentStatus'] == 'Not Started' && status == 'pending') {
-        return true;
-      }
-      if (job['currentStatus'] == 'In Progress' && status == 'in-progress') {
-        return true;
-      }
-      if (job['currentStatus'] == 'Completed' && status == 'completed') {
-        return true;
-      }
-      return false;
-    }).toList();
   }
 }

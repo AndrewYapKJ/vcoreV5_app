@@ -162,7 +162,7 @@ class JobApi {
         data: {
           'jobid': jobId,
           'driverid': driverId,
-          'mdtcode': mdtCode,
+          'mdtcode': "0$mdtCode",
           'lat': lat,
           'lon': lon,
           // 'job_laststatus_date_time': jobLastStatusDateTime,

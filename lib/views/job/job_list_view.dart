@@ -1862,13 +1862,13 @@ class _JobListViewState extends ConsumerState<JobListView>
                                                   : null,
                                             ),
                                           ),
-                                          Text(
-                                            'Code: ${mdt.mdtCode}${isDisabled ? ' (Completed)' : ''}${isCurrentlySelected ? ' (Current)' : ''}',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 9.sp,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
+                                          // Text(
+                                          //   'Code: ${mdt.mdtCode}${isDisabled ? ' (Completed)' : ''}${isCurrentlySelected ? ' (Current)' : ''}',
+                                          //   style: GoogleFonts.inter(
+                                          //     fontSize: 9.sp,
+                                          //     color: Colors.grey,
+                                          //   ),
+                                          // ),
                                         ],
                                       ),
                                     ),

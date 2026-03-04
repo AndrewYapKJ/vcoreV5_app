@@ -2493,13 +2493,13 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                                               color: displayColor,
                                             ),
                                           ),
-                                          Text(
-                                            'Code: ${mdt.mdtCode}',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10.sp,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
+                                          // Text(
+                                          //   'Code: ${mdt.mdtCode}',
+                                          //   style: GoogleFonts.inter(
+                                          //     fontSize: 10.sp,
+                                          //     color: Colors.grey,
+                                          //   ),
+                                          // ),
                                         ],
                                       ),
                                     ),

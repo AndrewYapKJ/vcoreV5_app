@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -404,7 +405,10 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                 },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
-                                  padding: EdgeInsets.all(14.h),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 8.h,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? colorScheme.primary.withValues(
@@ -551,8 +555,8 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                         children: [
                                           // Vehicle icon
                                           Container(
-                                            width: 50.h,
-                                            height: 50.h,
+                                            width: 30.h,
+                                            height: 30.h,
                                             decoration: BoxDecoration(
                                               color: colorScheme.secondary
                                                   .withValues(
@@ -564,9 +568,9 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                                   BorderRadius.circular(12),
                                             ),
                                             child: Icon(
-                                              Icons.directions_car,
+                                              CupertinoIcons.car,
                                               color: colorScheme.secondary,
-                                              size: 28.h,
+                                              size: 24.h,
                                             ),
                                           ),
                                           SizedBox(width: 12.w),
@@ -585,20 +589,6 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                                         fontSize: 14.sp,
                                                         color: colorScheme
                                                             .onSurface,
-                                                      ),
-                                                ),
-                                                SizedBox(height: 4.h),
-                                                Text(
-                                                  'Vehicle ID: ${vehicle.id}',
-                                                  style: context.font
-                                                      .regular(context)
-                                                      .copyWith(
-                                                        fontSize: 11.sp,
-                                                        color: colorScheme
-                                                            .onSurface
-                                                            .withValues(
-                                                              alpha: 0.6,
-                                                            ),
                                                       ),
                                                 ),
                                               ],

@@ -40,6 +40,9 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Disable minification to avoid R8 issues with Huawei/Play Core libraries
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
         debug {
             // Handle agconnect_remote_config manifest package attribute issue

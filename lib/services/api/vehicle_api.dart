@@ -14,7 +14,8 @@ class VehicleApi {
   ///
   /// Request:
   /// {
-  ///   "driverId": "DRIV000004"
+  ///   "driverId": "DRIV000004",
+  ///   "TenantId": 2010
   /// }
   ///
   /// Response: Wrapped in "d" property
@@ -28,11 +29,14 @@ class VehicleApi {
   ///     }
   ///   ]
   /// }
-  Future<List<Vehicle>> getVehicles({required String driverId}) async {
+  Future<List<Vehicle>> getVehicles({
+    required String driverId,
+    required String tenantId,
+  }) async {
     try {
       final response = await _dio.post(
         '/GetVehicles',
-        data: {'driverId': driverId},
+        data: {'driverId': driverId, 'TenantId': tenantId},
       );
 
       if (response.statusCode == 200 && response.data != null) {

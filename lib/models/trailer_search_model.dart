@@ -21,7 +21,7 @@ class TrailerSearchResult {
     return TrailerSearchResult(
       trailerRegNoDisp: json['TrailerRegNoDisp'] as String? ?? '',
       trailerRegNo: json['TrailerRegNo'] as String? ?? '',
-      trailerID: json['TrailerID'] as String? ?? '',
+      trailerID: json['Id'] as String? ?? '',
       trailerSize: json['TrailerSize'] as String? ?? '',
       status: json['Status'] as String? ?? '',
       reason: json['reason'] as String? ?? '',
@@ -34,6 +34,7 @@ class TrailerSearchResult {
       'TrailerRegNo': trailerRegNo,
       'TrailerID': trailerID,
       'TrailerSize': trailerSize,
+      'Id': trailerID,
       'Status': status,
       'reason': reason,
     };

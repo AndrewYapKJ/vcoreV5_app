@@ -9,9 +9,15 @@ class VehicleService {
 
   /// Get vehicles for a specific driver
   /// Returns a list of vehicles
-  Future<List<Vehicle>> getVehicles({required String driverId}) async {
+  Future<List<Vehicle>> getVehicles({
+    required String driverId,
+    required String tenantId,
+  }) async {
     try {
-      final vehicles = await _vehicleApi.getVehicles(driverId: driverId);
+      final vehicles = await _vehicleApi.getVehicles(
+        driverId: driverId,
+        tenantId: tenantId,
+      );
       return vehicles;
     } on DioException catch (e) {
       // Return empty list on error

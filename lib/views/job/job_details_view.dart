@@ -517,7 +517,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           final response = await dio.post(
             '/app/ReceiveFile.ashx',
             data: formData,
-            queryParameters: {'id': activeJobNo},
+            queryParameters: {'id': _activeImageJob.id},
           );
 
           if (response.statusCode == 200 && response.data != null) {
@@ -638,8 +638,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       // Update main job
       final result = await jobApi.updateJobDetails(
         jobNo: widget.job.no ?? '',
-        trailerID: _selectedTrailerId, // Use selected trailer ID
-        trailerNo: trailerNo,
+        trailerNo: _selectedTrailerId, // Use selected trailer ID for B2B too
+        trailerID: trailerNo,
         containerNo: containerNo,
         sealNo: sealNo,
         remarks: remarks,
@@ -668,9 +668,9 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           try {
             await jobApi.updateJobDetails(
               jobNo: widget.job.b2bData!.no ?? '',
-              trailerID:
+              trailerNo:
                   _selectedTrailerId, // Use selected trailer ID for B2B too
-              trailerNo: trailerNo,
+              trailerID: trailerNo,
               containerNo: containerNo,
               sealNo: sealNo,
               remarks: remarks,
@@ -1088,21 +1088,21 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                 'value': widget.job.truckNo,
                 'icon': Icons.local_shipping,
               },
-              {
-                'label': 'Container No',
-                'value': widget.job.containerNo,
-                'icon': Icons.inventory_2,
-              },
-              {
-                'label': 'Seal Number',
-                'value': widget.job.sealNo,
-                'icon': Icons.lock,
-              },
-              {
-                'label': 'Trailer No',
-                'value': widget.job.trailerNo,
-                'icon': Icons.rv_hookup,
-              },
+              // {
+              //   'label': 'Container No',
+              //   'value': widget.job.containerNo,
+              //   'icon': Icons.inventory_2,
+              // },
+              // {
+              //   'label': 'Seal Number',
+              //   'value': widget.job.sealNo,
+              //   'icon': Icons.lock,
+              // },
+              // {
+              //   'label': 'Trailer No',
+              //   'value': widget.job.trailerNo,
+              //   'icon': Icons.rv_hookup,
+              // },
               {
                 'label': 'Container Size & Type',
                 'value':

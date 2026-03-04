@@ -2,20 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 import 'package:vcore_v5_app/services/vehicle_service.dart';
 import 'package:vcore_v5_app/models/vehicle_model.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
+import 'package:vcore_v5_app/providers/user_provider.dart';
 
-class SelectVehicleView extends StatefulWidget {
+class SelectVehicleView extends ConsumerStatefulWidget {
   const SelectVehicleView({super.key});
 
   @override
-  State<SelectVehicleView> createState() => _SelectVehicleViewState();
+  ConsumerState<SelectVehicleView> createState() => _SelectVehicleViewState();
 }
 
-class _SelectVehicleViewState extends State<SelectVehicleView> {
+class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
   String? selectedVehicle;
   String searchQuery = '';
   String? lastSelectedVehicleId;
@@ -30,17 +32,21 @@ class _SelectVehicleViewState extends State<SelectVehicleView> {
   }
 
   Future<void> _initializeVehicles() async {
-    // Get driver ID from cache
+    // Get driver ID and tenant ID from cache and provider
     final driverId = _cacheService.getCachedDriverId();
+    final tenantId = ref.read(tenantIdProvider);
 
-    if (driverId != null) {
-      _vehiclesFuture = _vehicleService.getVehicles(driverId: driverId);
+    if (driverId != null && tenantId != null) {
+      _vehiclesFuture = _vehicleService.getVehicles(
+        driverId: driverId,
+        tenantId: tenantId,
+      );
 
       // Load last selected vehicle
       await _loadLastSelectedVehicle();
     } else {
       setState(() {
-        _vehiclesFuture = Future.error('Driver ID not found');
+        _vehiclesFuture = Future.error('Driver ID or Tenant ID not found');
       });
     }
   }

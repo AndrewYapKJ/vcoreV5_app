@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/providers/user_provider.dart';
 
-class MainShellScaffold extends StatefulWidget {
+class MainShellScaffold extends ConsumerStatefulWidget {
   final Widget child;
   final int currentIndex;
 
@@ -15,10 +17,10 @@ class MainShellScaffold extends StatefulWidget {
   });
 
   @override
-  State<MainShellScaffold> createState() => _MainShellScaffoldState();
+  ConsumerState<MainShellScaffold> createState() => _MainShellScaffoldState();
 }
 
-class _MainShellScaffoldState extends State<MainShellScaffold> {
+class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
   late GlobalKey<ScaffoldState> _scaffoldKey;
 
   @override
@@ -215,7 +217,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                   ),
                   SizedBox(height: 10.h),
                   Text(
-                    'Muhammad Hakimie',
+                    ref.watch(userNameProvider) ?? 'Guest User',
                     style: context.font
                         .bold(context)
                         .copyWith(
@@ -233,7 +235,7 @@ class _MainShellScaffoldState extends State<MainShellScaffold> {
                       ),
                       SizedBox(width: 3.w),
                       Text(
-                        'Driver • ID: 0',
+                        'Driver • ID: ${ref.watch(driverIdProvider) ?? '0'}',
                         style: context.font
                             .regular(context)
                             .copyWith(

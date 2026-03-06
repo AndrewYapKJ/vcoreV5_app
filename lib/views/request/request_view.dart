@@ -1,49 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 import 'package:vcore_v5_app/widgets/custom_typeahead_field.dart';
+import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
+import 'package:vcore_v5_app/services/vehicle_service.dart';
+import 'package:vcore_v5_app/services/api/vehicle_api.dart';
+import 'package:vcore_v5_app/services/api/jobs_api.dart';
+import 'package:vcore_v5_app/models/vehicle_model.dart';
+import 'package:vcore_v5_app/models/trailer_search_model.dart';
+import 'package:vcore_v5_app/providers/user_provider.dart';
 
-// Sample data for dropdowns
-final List<String> Function(BuildContext) getTrailerOptions = (context) => [
-  'flatbed'.tr(),
-  'refrigerated'.tr(),
-  'tanker'.tr(),
-  'cargo_van'.tr(),
-  'enclosed'.tr(),
-  'open_deck'.tr(),
-  'side_loader'.tr(),
-];
-
-final List<String> Function(BuildContext) getVehicleOptions = (context) => [
-  '1 Vehicle',
-  '2 Vehicles',
-  '3 Vehicles',
-  '4 Vehicles',
-  '5+ Vehicles',
-  '1 Vehicle',
-  '2 Vehicles',
-  '3 Vehicles',
-  '4 Vehicles',
-  '5+ Vehicles',
-];
-
-class RequestView extends StatefulWidget {
+class RequestView extends ConsumerStatefulWidget {
   const RequestView({super.key});
 
   @override
-  State<RequestView> createState() => _RequestViewState();
+  ConsumerState<RequestView> createState() => _RequestViewState();
 }
 
-class _RequestViewState extends State<RequestView> {
+class _RequestViewState extends ConsumerState<RequestView> {
   String? selectedJobType; // 'delivery' or 'collection'
   String? selectedSize; // '20', '40', or '60'
   String? selectedTrailer; // trailer type
-  String? selectedVehicles; // vehicle count
+  String? selectedVehicle; // vehicle plate number
   final containerNoController = TextEditingController();
   final trailerController = TextEditingController();
-  final vehiclesController = TextEditingController();
+  final vehicleController = TextEditingController();
   bool isLoading = false;
   String? jobTypeError;
   String? sizeError;
@@ -51,11 +35,157 @@ class _RequestViewState extends State<RequestView> {
   String? trailerError;
   String? vehicleError;
 
+  // Services
+  final LoginCacheService _cacheService = LoginCacheService();
+  final VehicleService _vehicleService = VehicleService();
+  final VehicleApi _vehicleApi = VehicleApi();
+  final JobsApi _jobsApi = JobsApi();
+
+  // Data lists
+  List<Vehicle> _availableVehicles = [];
+  bool _isLoadingVehicles = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVehicles();
+    _loadCachedVehicle();
+  }
+
+  Future<void> _loadVehicles() async {
+    setState(() => _isLoadingVehicles = true);
+    try {
+      // Use Riverpod provider to get driver ID (handles session properly)
+      final driverId = ref.read(driverIdProvider);
+      final tenantId = ref.read(tenantIdProvider);
+
+      if (driverId != null && tenantId != null) {
+        final vehicles = await _vehicleService.getVehicles(
+          driverId: driverId,
+          tenantId: tenantId,
+        );
+        if (mounted) {
+          setState(() {
+            _availableVehicles = vehicles;
+            _isLoadingVehicles = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingVehicles = false);
+      }
+    }
+  }
+
+  Future<void> _loadCachedVehicle() async {
+    final cachedVehicle = _cacheService.getCachedVehicleSelection();
+    if (cachedVehicle != null && mounted) {
+      setState(() {
+        selectedVehicle = cachedVehicle['plateNumber'];
+        vehicleController.text = cachedVehicle['plateNumber'] ?? '';
+      });
+    }
+  }
+
+  Future<List<TrailerSearchResult>> _searchTrailers(String query) async {
+    debugPrint(
+      '🔍 Searching trailers with query: "$query" and size: "$selectedSize"',
+    );
+    try {
+      final tenantId = ref.read(tenantIdProvider);
+      if (tenantId == null) {
+        throw Exception('Tenant ID not found');
+      }
+
+      debugPrint(
+        '🔍 Searching trailers: query=, size=$selectedSize, tenantId=$tenantId',
+      );
+
+      final results = await _vehicleApi.searchTrailers(
+        trailerRegNo: query,
+        trSize: selectedSize ?? '40',
+        tenantId: tenantId,
+      );
+
+      debugPrint('✅ Got ${results.length} trailer results');
+      return results;
+    } catch (e) {
+      debugPrint('❌ Error searching trailers: $e');
+      return [];
+    }
+  }
+
+  Future<void> _submitRequestJob() async {
+    try {
+      setState(() => isLoading = true);
+
+      // Use Riverpod provider to get driver ID (handles session properly)
+      final driverId = ref.read(driverIdProvider);
+      final vehicleData = _availableVehicles.firstWhere(
+        (v) => v.plateNumber == selectedVehicle,
+      );
+
+      if (driverId == null || driverId.isEmpty) {
+        throw Exception('Session expired. Please re-login to continue');
+      }
+
+      debugPrint(
+        '📤 Submitting request job: driverId=$driverId, vehicleId=${vehicleData.id}, trailer=$selectedTrailer, container=$selectedSize',
+      );
+
+      final response = await _jobsApi.requestJob(
+        driverId: driverId,
+        pmid: vehicleData.id, // Vehicle ID
+        delCol: selectedJobType == 'delivery' ? 'DEL' : 'COL',
+        containerNo: containerNoController.text,
+        containerSize: selectedSize!,
+        trailerId: selectedTrailer!,
+        lat: 0.0,
+        lon: 0.0,
+      );
+
+      if (mounted) {
+        setState(() => isLoading = false);
+
+        if (response.success) {
+          debugPrint('✅ Request job submitted successfully');
+          CustomSnackBar.showSuccess(
+            context,
+            message: 'request_submitted'.tr(),
+          );
+
+          // Clear form
+          containerNoController.clear();
+          trailerController.clear();
+          vehicleController.clear();
+          setState(() {
+            selectedJobType = null;
+            selectedSize = null;
+            selectedTrailer = null;
+            selectedVehicle = null;
+          });
+        } else {
+          CustomSnackBar.showError(
+            context,
+            message: response.message ?? 'Failed to submit request',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error submitting request: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+        CustomSnackBar.showError(context, message: 'Error: ${e.toString()}');
+      }
+    }
+  }
+
   @override
   void dispose() {
     containerNoController.dispose();
     trailerController.dispose();
-    vehiclesController.dispose();
+    vehicleController.dispose();
     super.dispose();
   }
 
@@ -206,8 +336,8 @@ class _RequestViewState extends State<RequestView> {
                         Expanded(
                           child: _buildRadioOption(
                             context: context,
-                            label: '60\'',
-                            value: '60',
+                            label: '45\'',
+                            value: '45',
                             icon: Icons.crop_din,
                             groupValue: selectedSize,
                             onChanged: (value) {
@@ -285,23 +415,17 @@ class _RequestViewState extends State<RequestView> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CustomTypeAheadField<String>(
+                    CustomTypeAheadField<TrailerSearchResult>(
                       controller: trailerController,
-                      hint: 'Search trailer type',
+                      hint: 'Search trailer registration number',
                       prefixIcon: Icons.local_shipping_outlined,
                       suffixIcon: Icons.qr_code_2,
                       onQRScan: _scanQRCode,
                       suggestionsCallback: (pattern) async {
-                        await Future.delayed(const Duration(milliseconds: 200));
-                        return getTrailerOptions(context)
-                            .where(
-                              (trailer) => trailer.toLowerCase().contains(
-                                pattern.toLowerCase(),
-                              ),
-                            )
-                            .toList();
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        return await _searchTrailers(pattern);
                       },
-                      itemBuilder: (context, suggestion) {
+                      itemBuilder: (context, trailer) {
                         return Row(
                           children: [
                             Container(
@@ -313,28 +437,37 @@ class _RequestViewState extends State<RequestView> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
-                                Icons.check_circle_outline,
+                                Icons.local_shipping,
                                 color: colorScheme.primary,
                                 size: 16.h,
                               ),
                             ),
                             SizedBox(width: 12.w),
-                            Text(
-                              suggestion,
-                              style: context.font
-                                  .regular(context)
-                                  .copyWith(fontSize: 14.sp),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    trailer.trailerRegNo,
+                                    style: context.font
+                                        .semibold(context)
+                                        .copyWith(fontSize: 14.sp),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         );
                       },
-                      onSuggestionSelected: (suggestion) {
+                      onSuggestionSelected: (trailer) {
                         setState(() {
-                          selectedTrailer = suggestion;
+                          selectedTrailer = trailer.trailerID;
+                          trailerController.text = trailer.trailerRegNo;
                           trailerError = null;
+                          //  = [];
                         });
                       },
-                      suggestionDisplay: (suggestion) => suggestion,
+                      suggestionDisplay: (trailer) => trailer.trailerRegNo,
                       colorScheme: colorScheme,
                       context: context,
                       maxSuggestions: 5,
@@ -356,31 +489,31 @@ class _RequestViewState extends State<RequestView> {
                 ),
                 SizedBox(height: 16.h),
 
-                // Vehicles Section - Enhanced with Custom Typeahead
+                // Vehicle Section - Enhanced with Custom Typeahead
                 _buildSectionLabel(
                   context,
-                  'vehicles'.tr(),
+                  'vehicle'.tr(),
                   Icons.directions_bus,
                 ),
                 SizedBox(height: 4.h),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CustomTypeAheadField<String>(
-                      controller: vehiclesController,
-                      hint: 'Search vehicle count',
+                    CustomTypeAheadField<Vehicle>(
+                      controller: vehicleController,
+                      hint: 'Search vehicle plate number',
                       prefixIcon: Icons.directions_car_filled,
                       suggestionsCallback: (pattern) async {
-                        await Future.delayed(const Duration(milliseconds: 200));
-                        return getVehicleOptions(context)
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        return _availableVehicles
                             .where(
-                              (vehicle) => vehicle.toLowerCase().contains(
-                                pattern.toLowerCase(),
-                              ),
+                              (vehicle) => vehicle.plateNumber
+                                  .toLowerCase()
+                                  .contains(pattern.toLowerCase()),
                             )
                             .toList();
                       },
-                      itemBuilder: (context, suggestion) {
+                      itemBuilder: (context, vehicle) {
                         return Row(
                           children: [
                             Icon(
@@ -390,7 +523,7 @@ class _RequestViewState extends State<RequestView> {
                             ),
                             SizedBox(width: 12.w),
                             Text(
-                              suggestion,
+                              vehicle.plateNumber,
                               style: context.font
                                   .regular(context)
                                   .copyWith(fontSize: 14.sp),
@@ -398,13 +531,14 @@ class _RequestViewState extends State<RequestView> {
                           ],
                         );
                       },
-                      onSuggestionSelected: (suggestion) {
+                      onSuggestionSelected: (vehicle) {
                         setState(() {
-                          selectedVehicles = suggestion;
+                          selectedVehicle = vehicle.plateNumber;
+                          vehicleController.text = vehicle.plateNumber;
                           vehicleError = null;
                         });
                       },
-                      suggestionDisplay: (suggestion) => suggestion,
+                      suggestionDisplay: (vehicle) => vehicle.plateNumber,
                       colorScheme: colorScheme,
                       context: context,
                       maxSuggestions: 5,
@@ -453,7 +587,7 @@ class _RequestViewState extends State<RequestView> {
                     child: InkWell(
                       onTap: isLoading
                           ? null
-                          : () {
+                          : () async {
                               bool hasError = false;
                               setState(() {
                                 jobTypeError = null;
@@ -485,41 +619,23 @@ class _RequestViewState extends State<RequestView> {
                               }
                               if (selectedTrailer == null) {
                                 setState(
-                                  () =>
-                                      trailerError = 'Trailer type is required',
+                                  () => trailerError = 'Trailer is required',
                                 );
                                 hasError = true;
                               }
-                              if (selectedVehicles == null) {
+                              if (selectedVehicle == null) {
                                 setState(
-                                  () => vehicleError =
-                                      'Vehicle count is required',
+                                  () => vehicleError = 'Vehicle is required',
                                 );
                                 hasError = true;
                               }
 
                               if (!hasError) {
-                                if (selectedSize != null) {
-                                  setState(() => isLoading = true);
-                                  Future.delayed(
-                                    const Duration(seconds: 1),
-                                    () {
-                                      if (mounted) {
-                                        setState(() => isLoading = false);
-                                        CustomSnackBar.showSuccess(
-                                          context,
-                                          message: 'request_submitted'.tr(),
-                                        );
-                                        containerNoController.clear();
-                                        setState(() {
-                                          selectedJobType = null;
-                                          selectedSize = null;
-                                          selectedTrailer = null;
-                                          selectedVehicles = null;
-                                        });
-                                      }
-                                    },
-                                  );
+                                if (selectedSize != null &&
+                                    selectedJobType != null &&
+                                    selectedTrailer != null &&
+                                    selectedVehicle != null) {
+                                  await _submitRequestJob();
                                 }
                               }
                             },

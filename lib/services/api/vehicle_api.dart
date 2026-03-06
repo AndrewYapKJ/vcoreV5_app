@@ -92,7 +92,7 @@ class VehicleApi {
   Future<List<TrailerSearchResult>> searchTrailers({
     required String trailerRegNo,
     required String trSize,
-    required int tenantId,
+    required String tenantId,
   }) async {
     try {
       final response = await _dio.post(

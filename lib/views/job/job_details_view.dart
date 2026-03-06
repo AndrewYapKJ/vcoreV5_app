@@ -141,7 +141,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       final results = await _vehicleApi.searchTrailers(
         trailerRegNo: trailerNo,
         trSize: sizeToUse,
-        tenantId: int.parse(tenantId),
+        tenantId: (tenantId),
       );
 
       if (results.isNotEmpty) {
@@ -776,7 +776,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       final results = await _vehicleApi.searchTrailers(
         trailerRegNo: query,
         trSize: sizeToUse,
-        tenantId: int.parse(tenantId),
+        tenantId: (tenantId),
       );
 
       print('✅ Got ${results.length} trailer results');

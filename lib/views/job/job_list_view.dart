@@ -1,17 +1,21 @@
 import 'dart:math' as math;
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
+import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import 'package:vcore_v5_app/services/job_service.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
+import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
 class JobListView extends ConsumerStatefulWidget {
   const JobListView({super.key});
@@ -26,6 +30,7 @@ class _JobListViewState extends ConsumerState<JobListView>
   late TabController _statusTabController;
   final TextEditingController _searchController = TextEditingController();
   final JobService _jobService = JobService();
+  final ImagePicker _picker = ImagePicker();
 
   String _selectedJobType = 'HMS'; // HMS or TMS
   String _selectedStatus = 'pending'; // pending, in-progress, completed
@@ -33,6 +38,9 @@ class _JobListViewState extends ConsumerState<JobListView>
 
   List<Job> _jobs = [];
   bool _isLoading = true;
+  bool _isUploadingImages = false;
+  bool _isPickingImages = false;
+  bool _isUpdatingJobDetails = false;
   String? _errorMessage;
 
   @override
@@ -95,6 +103,30 @@ class _JobListViewState extends ConsumerState<JobListView>
         _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  void _handleStatusSwipe(DragEndDetails details) {
+    final velocityX = details.primaryVelocity ?? 0;
+    const minSwipeVelocity = 250.0;
+
+    if (velocityX.abs() < minSwipeVelocity) return;
+
+    final currentIndex = _statusTabController.index;
+    int? nextIndex;
+
+    // Swipe left -> move forward (Pending -> In-Progress -> Completed)
+    if (velocityX < 0 && currentIndex < 2) {
+      nextIndex = currentIndex + 1;
+    }
+
+    // Swipe right -> move backward (Completed -> In-Progress -> Pending)
+    if (velocityX > 0 && currentIndex > 0) {
+      nextIndex = currentIndex - 1;
+    }
+
+    if (nextIndex != null && nextIndex != currentIndex) {
+      _statusTabController.animateTo(nextIndex);
     }
   }
 
@@ -193,8 +225,16 @@ class _JobListViewState extends ConsumerState<JobListView>
             ],
           ),
         ),
-        // Job List
-        Expanded(child: SafeArea(child: _buildJobList(context, colorScheme))),
+        // Job List (swipe left/right to change status)
+        Expanded(
+          child: SafeArea(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: _handleStatusSwipe,
+              child: _buildJobList(context, colorScheme),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -810,10 +850,9 @@ class _JobListViewState extends ConsumerState<JobListView>
                             icon: Icons.image_outlined,
                             label: 'Upload',
                             color: Colors.blue,
-                            onTap: () => _showSnackbar(
-                              context,
-                              'Image upload coming soon',
-                            ),
+                            isLoading: _isUploadingImages || _isPickingImages,
+                            onTap: () =>
+                                _pickAndUploadImagesForJob(context, job),
                           ),
                         ),
                         SizedBox(width: 3.w),
@@ -1078,10 +1117,10 @@ class _JobListViewState extends ConsumerState<JobListView>
                                 icon: Icons.image_outlined,
                                 label: 'Upload',
                                 color: Colors.blue,
-                                onTap: () => _showSnackbar(
-                                  context,
-                                  'Image upload coming soon',
-                                ),
+                                isLoading:
+                                    _isUploadingImages || _isPickingImages,
+                                onTap: () =>
+                                    _pickAndUploadImagesForJob(context, job),
                               ),
                             ),
                             SizedBox(width: 3.w),
@@ -1457,39 +1496,45 @@ class _JobListViewState extends ConsumerState<JobListView>
         ? [
             {
               'label': 'Truck',
-              'value': job.truckNo,
+              'value': job.truckNo ?? '-',
               'icon': Icons.local_shipping,
               'color': const Color(0xFF3B82F6),
             },
             {
               'label': 'Container',
-              'value': job.containerNo,
+              'value': job.containerNo ?? '-',
               'icon': Icons.inventory_2,
               'color': const Color(0xFF8B5CF6),
             },
             {
               'label': 'Seal',
-              'value': job.sealNo,
+              'value': job.sealNo ?? '-',
               'icon': Icons.lock,
               'color': const Color(0xFFEC4899),
+            },
+            {
+              'label': 'Trailer',
+              'value': job.trailerNo ?? '-',
+              'icon': Icons.local_shipping_outlined,
+              'color': const Color(0xFF10B981),
             },
           ]
         : [
             {
               'label': 'Truck',
-              'value': job.truckNo,
+              'value': job.truckNo ?? '-',
               'icon': Icons.directions_car,
               'color': const Color(0xFF3B82F6),
             },
             {
               'label': 'Trailer',
-              'value': job.trailerNo,
+              'value': job.trailerNo ?? '-',
               'icon': Icons.shopping_bag,
               'color': const Color(0xFF8B5CF6),
             },
             {
               'label': 'Size',
-              'value': job.containerSize,
+              'value': job.containerSize ?? '-',
               'icon': Icons.scale,
               'color': const Color(0xFFEC4899),
             },
@@ -1591,9 +1636,10 @@ class _JobListViewState extends ConsumerState<JobListView>
     required String label,
     required Color color,
     required VoidCallback onTap,
+    bool isLoading = false,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
@@ -1614,23 +1660,48 @@ class _JobListViewState extends ConsumerState<JobListView>
           ],
         ),
         padding: EdgeInsets.symmetric(vertical: 7.h, horizontal: 6.w),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16.sp, color: color),
-            SizedBox(width: 8.h),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 9.sp,
-                fontWeight: FontWeight.w800,
-                color: color,
-                letterSpacing: -0.2,
+        child: isLoading
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 14.w,
+                    height: 14.h,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: color,
+                    ),
+                  ),
+                  SizedBox(width: 8.h),
+                  Text(
+                    'Loading...',
+                    style: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16.sp, color: color),
+                  SizedBox(width: 8.h),
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1641,6 +1712,244 @@ class _JobListViewState extends ConsumerState<JobListView>
     if (result == true && mounted) {
       debugPrint('Activity updated, refreshing job list...');
       await _fetchJobs();
+    }
+  }
+
+  Future<void> _pickAndUploadImagesForJob(BuildContext context, Job job) async {
+    if (_isUploadingImages || _isPickingImages) return;
+
+    final jobNo = job.no?.trim() ?? '';
+    if (jobNo.isEmpty || job.id == null) {
+      _safeShowSnackBar(
+        context,
+        'Job number or ID is missing, cannot upload images',
+        Colors.red,
+      );
+      return;
+    }
+
+    try {
+      if (mounted) {
+        setState(() {
+          _isPickingImages = true;
+        });
+      }
+
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext modalContext) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(modalContext).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 10.h),
+                  Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  ListTile(
+                    leading: Icon(
+                      Icons.photo_camera,
+                      color: Theme.of(modalContext).colorScheme.primary,
+                    ),
+                    title: Text(
+                      'Camera',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.pop(modalContext, ImageSource.camera),
+                  ),
+                  Divider(height: 1, color: Colors.grey[300]),
+                  ListTile(
+                    leading: Icon(
+                      Icons.photo_library,
+                      color: Theme.of(modalContext).colorScheme.primary,
+                    ),
+                    title: Text(
+                      'Gallery',
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.pop(modalContext, ImageSource.gallery),
+                  ),
+                  SizedBox(height: 10.h),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      if (source == null) return;
+
+      List<XFile> images = [];
+      if (source == ImageSource.camera) {
+        final photo = await _picker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: 85,
+        );
+        if (photo != null) {
+          images.add(photo);
+        }
+      } else {
+        images = await _picker.pickMultiImage(imageQuality: 85);
+      }
+
+      if (images.isEmpty || !mounted) return;
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: Text(
+            'Upload Images',
+            style: GoogleFonts.inter(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Upload ${images.length} image(s) for job $jobNo?',
+            style: GoogleFonts.inter(fontSize: 14.sp),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(
+                'Upload',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true || !mounted) return;
+
+      await _uploadImagesForJob(context: context, job: job, images: images);
+    } catch (e) {
+      debugPrint('❌ Error in image picker flow: $e');
+      if (mounted) {
+        _safeShowSnackBar(context, 'Error: ${e.toString()}', Colors.red);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPickingImages = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _uploadImagesForJob({
+    required BuildContext context,
+    required Job job,
+    required List<XFile> images,
+  }) async {
+    setState(() {
+      _isUploadingImages = true;
+    });
+
+    try {
+      final dio = DioRepo(baseUrl: 'https://vcore.x1.com.my').mDio;
+      final jobNo = job.no?.trim() ?? '';
+      final jobId = job.id;
+
+      if (jobNo.isEmpty || jobId == null) {
+        throw Exception('Job number or ID is missing');
+      }
+
+      int successCount = 0;
+      for (var image in images) {
+        try {
+          final fileName =
+              '$jobNo-${DateFormat("yyyyMMddHHmmss").format(DateTime.now())}';
+
+          final formData = FormData.fromMap({
+            'files': await MultipartFile.fromFile(
+              image.path,
+              filename: fileName,
+            ),
+          });
+
+          final response = await dio.post(
+            '/app/ReceiveFile.ashx',
+            data: formData,
+            queryParameters: {'id': jobId},
+          );
+
+          if (response.statusCode == 200 && response.data != null) {
+            successCount++;
+          }
+        } catch (e) {
+          debugPrint('❌ Failed to upload image ${image.path}: $e');
+        }
+      }
+
+      if (!mounted) return;
+
+      if (successCount > 0) {
+        _safeShowSnackBar(
+          context,
+          '$successCount image(s) uploaded successfully',
+          Colors.green,
+        );
+      }
+
+      if (successCount < images.length) {
+        _safeShowSnackBar(
+          context,
+          '${images.length - successCount} image(s) failed to upload',
+          Colors.orange,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error uploading images: $e');
+      if (mounted) {
+        _safeShowSnackBar(
+          context,
+          'Failed to upload images: ${e.toString()}',
+          Colors.red,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingImages = false;
+        });
+      }
     }
   }
 
@@ -1736,7 +2045,425 @@ class _JobListViewState extends ConsumerState<JobListView>
     Job job,
     ColorScheme colorScheme,
   ) {
-    _showUpdateJobActivityDialog(context, job);
+    // Show bottom sheet with options
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Container(
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewPadding.bottom,
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                // Edit Details Option
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showEditJobDetailsDialog(context, job);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit_outlined,
+                            color: Colors.blue,
+                            size: 20.sp,
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Edit Details',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                Text(
+                                  'Update container, seal, trailer, remarks',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.blue.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14.sp,
+                            color: Colors.blue,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                // Update Activity Option
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showUpdateJobActivityDialog(context, job);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            color: Colors.orange,
+                            size: 20.sp,
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Update Activity',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                                Text(
+                                  'Change job status/activity',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.orange.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14.sp,
+                            color: Colors.orange,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16.h),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show dialog to edit job details (container, seal, trailer, remarks)
+  void _showEditJobDetailsDialog(BuildContext context, Job job) {
+    final containerController = TextEditingController(
+      text: job.containerNo ?? '',
+    );
+    final sealController = TextEditingController(text: job.sealNo ?? '');
+    final trailerController = TextEditingController(text: job.trailerNo ?? '');
+    final remarksController = TextEditingController(text: job.remarks ?? '');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      color: Colors.blue,
+                      size: 22.sp,
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Edit Job Details',
+                          style: GoogleFonts.inter(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'Job: ${job.no}',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Container Number
+                    _buildEditFieldLabel('Container Number'),
+                    SizedBox(height: 6.h),
+                    _buildEditTextField(
+                      controller: containerController,
+                      hint: 'Enter container number',
+                      icon: Icons.inventory,
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Seal Number
+                    _buildEditFieldLabel('Seal Number'),
+                    SizedBox(height: 6.h),
+                    _buildEditTextField(
+                      controller: sealController,
+                      hint: 'Enter seal number',
+                      icon: Icons.lock,
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Trailer Number
+                    _buildEditFieldLabel('Trailer Number'),
+                    SizedBox(height: 6.h),
+                    _buildEditTextField(
+                      controller: trailerController,
+                      hint: 'Enter trailer number',
+                      icon: Icons.local_shipping,
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Remarks
+                    _buildEditFieldLabel('Remarks'),
+                    SizedBox(height: 6.h),
+                    _buildEditTextField(
+                      controller: remarksController,
+                      hint: 'Enter remarks',
+                      icon: Icons.note_outlined,
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isUpdatingJobDetails
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _isUpdatingJobDetails
+                      ? null
+                      : () async {
+                          await _updateJobDetailsAPI(
+                            context: dialogContext,
+                            job: job,
+                            containerNo: containerController.text.trim(),
+                            sealNo: sealController.text.trim(),
+                            trailerNo: trailerController.text.trim(),
+                            remarks: remarksController.text.trim(),
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: _isUpdatingJobDetails
+                      ? SizedBox(
+                          width: 20.w,
+                          height: 16.h,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Save Changes',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEditFieldLabel(String label) {
+    return Text(
+      label,
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w700,
+        color: Colors.grey[800],
+      ),
+    );
+  }
+
+  Widget _buildEditTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12.sp),
+        prefixIcon: Icon(icon, color: Colors.blue.withValues(alpha: 0.6)),
+        filled: true,
+        fillColor: Colors.blue.withValues(alpha: 0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue, width: 2),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+      ),
+      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w500),
+    );
+  }
+
+  Future<void> _updateJobDetailsAPI({
+    required BuildContext context,
+    required Job job,
+    required String containerNo,
+    required String sealNo,
+    required String trailerNo,
+    required String remarks,
+  }) async {
+    setState(() {
+      _isUpdatingJobDetails = true;
+    });
+
+    try {
+      final jobApi = JobApi();
+      final tenantId = ref.read(tenantIdProvider) ?? '';
+
+      if (tenantId.isEmpty) {
+        throw Exception('Tenant ID not found');
+      }
+
+      final response = await jobApi.updateJobDetails(
+        jobNo: job.no ?? '',
+        trailerID: job.id?.toString() ?? '',
+        trailerNo: trailerNo,
+        containerNo: containerNo,
+        sealNo: sealNo,
+        remarks: remarks,
+        siteType: _selectedJobType,
+        pickQty: job.pickQty ?? '0',
+        dropQty: job.dropQty ?? '0',
+        tenantId: tenantId,
+      );
+
+      if (!mounted) return;
+
+      if (response['result'] == true || response['success'] == true) {
+        CustomSnackBar.showSuccess(
+          context,
+          message: 'Job details updated successfully',
+        );
+        Navigator.pop(context);
+        await _fetchJobs();
+      } else {
+        CustomSnackBar.showError(
+          context,
+          message: response['message'] ?? 'Failed to update job details',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating job details: $e');
+      if (mounted) {
+        CustomSnackBar.showError(context, message: 'Error: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingJobDetails = false;
+        });
+      }
+    }
   }
 
   /// Show dialog to update job activity (MDT function)
@@ -2110,13 +2837,20 @@ class _JobListViewState extends ConsumerState<JobListView>
         final duration = bgColor == Colors.red
             ? const Duration(seconds: 3)
             : const Duration(seconds: 2);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: bgColor,
+
+        if (bgColor == Colors.green) {
+          CustomSnackBar.showSuccess(
+            context,
+            message: message,
             duration: duration,
-          ),
-        );
+          );
+        } else {
+          CustomSnackBar.showError(
+            context,
+            message: message,
+            duration: duration,
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error showing snackbar: $e');

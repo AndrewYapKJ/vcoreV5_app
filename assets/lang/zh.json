@@ -63,7 +63,7 @@
   "jobs": "工作",
   "incentive": "激励",
   "job_requests": "工作请求",
-  "dashboard": "仪表盘",
+
   "account": "账户",
   "application": "应用程序",
   "support": "支持",
@@ -104,6 +104,7 @@
   "sign_in_to_account": "登录您的账户",
   "email_address": "电子邮件地址",
   "mobile_number": "手机号码",
+  "username": "用户名",
   "password": "密码",
   "required": "必需",
   "min_4_characters": "最少4个字符",

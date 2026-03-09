@@ -78,7 +78,7 @@ class LoginView extends ConsumerWidget {
                       // Email Field
                       _buildModernTextField(
                         context: context,
-                        label: 'mobile_number'.tr(),
+                        label: 'username'.tr(),
                         icon: Icons.phone_android_outlined,
                         onChanged: notifier.setUserId,
                         errorText: login.userId.isEmpty

@@ -39,7 +39,7 @@ class CustomTypeAheadField<T> extends StatefulWidget {
     required this.suggestionDisplay,
     required this.colorScheme,
     required this.context,
-    this.maxSuggestions = 5,
+    this.maxSuggestions = 15,
     this.debounceDuration = const Duration(milliseconds: 300),
     this.hideOnEmpty = true,
   });
@@ -272,6 +272,7 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
         if (_showSuggestions)
           Container(
             width: double.infinity,
+            constraints: BoxConstraints(maxHeight: 250.h),
             margin: EdgeInsets.only(top: 4.h),
             decoration: BoxDecoration(
               color: widget.colorScheme.surfaceContainerHigh,
@@ -287,7 +288,7 @@ class _CustomTypeAheadFieldState<T> extends State<CustomTypeAheadField<T>> {
                 ),
               ],
             ),
-            constraints: BoxConstraints(maxHeight: 300.h),
+
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: _buildSuggestionsList(),

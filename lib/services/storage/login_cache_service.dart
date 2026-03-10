@@ -10,6 +10,9 @@ class LoginCacheService {
   static const String _tokenKey = 'auth_token';
   static const String _vehicleSelectionKey = 'selected_vehicle';
   static const String _ptiStatusKey = 'pti_status';
+  static const String _rememberedUsernameKey = 'remembered_username';
+  static const String _rememberedPasswordKey = 'remembered_password';
+  static const String _rememberMeKey = 'remember_me_enabled';
   static const Duration _sessionDuration = Duration(hours: 24);
 
   static final LoginCacheService _instance = LoginCacheService._internal();
@@ -187,7 +190,8 @@ class LoginCacheService {
     }
   }
 
-  /// Check if user session is still valid (within 24 hours)
+  /// Check if user session is still valid (same day only)
+  /// Session expires when date changes to next day
   bool isSessionValid() {
     try {
       final loginDateStr = _prefs.getString(_loginDateKey);
@@ -198,13 +202,17 @@ class LoginCacheService {
 
       final loginDate = DateFormat('yyyy-MM-dd HH:mm:ss').parse(loginDateStr);
       final now = DateTime.now();
-      final difference = now.difference(loginDate);
 
-      final isValid = difference < _sessionDuration;
+      // Check if it's the same day (year-month-day)
+      final isSameDay =
+          loginDate.year == now.year &&
+          loginDate.month == now.month &&
+          loginDate.day == now.day;
+
       debugPrint(
-        'Session check - Valid: $isValid, Duration: ${difference.inHours}h ${(difference.inMinutes % 60)}m',
+        'Session check - Valid: $isSameDay, Login: ${DateFormat('yyyy-MM-dd').format(loginDate)}, Now: ${DateFormat('yyyy-MM-dd').format(now)}',
       );
-      return isValid;
+      return isSameDay;
     } catch (e) {
       debugPrint('Error checking session validity: $e');
       return false;
@@ -286,6 +294,7 @@ class LoginCacheService {
   }
 
   /// Clear all cached login data
+  /// Preserves remembered username and password if remember me was enabled
   Future<void> clearCache() async {
     try {
       await _prefs.remove(_loginDateKey);
@@ -294,7 +303,9 @@ class LoginCacheService {
       await _prefs.remove(_loginDataKey);
       await _prefs.remove(_vehicleSelectionKey);
       await _prefs.remove(_ptiStatusKey);
-      debugPrint('All cache cleared');
+      // NOTE: _rememberedUsernameKey, _rememberedPasswordKey, and _rememberMeKey are NOT removed
+      // They persist across logout to support "Remember Me" functionality
+      debugPrint('Cache cleared (remembered credentials preserved)');
     } catch (e) {
       debugPrint('Error clearing cache: $e');
     }
@@ -404,6 +415,71 @@ class LoginCacheService {
     } catch (e) {
       debugPrint('Error retrieving cached vehicle ID: $e');
       return null;
+    }
+  }
+
+  // ========== Remember Me Functionality ==========
+
+  /// Save username and password when "Remember Me" is checked
+  Future<void> saveRememberedCredentials({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      await _prefs.setString(_rememberedUsernameKey, username);
+      await _prefs.setString(_rememberedPasswordKey, password);
+      await _prefs.setBool(_rememberMeKey, true);
+      debugPrint('Remembered credentials saved for: $username');
+    } catch (e) {
+      debugPrint('Error saving remembered credentials: $e');
+    }
+  }
+
+  /// Get remembered username
+  String? getRememberedUsername() {
+    try {
+      if (isRememberMeEnabled()) {
+        return _prefs.getString(_rememberedUsernameKey);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving remembered username: $e');
+      return null;
+    }
+  }
+
+  /// Get remembered password
+  String? getRememberedPassword() {
+    try {
+      if (isRememberMeEnabled()) {
+        return _prefs.getString(_rememberedPasswordKey);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving remembered password: $e');
+      return null;
+    }
+  }
+
+  /// Check if remember me is enabled
+  bool isRememberMeEnabled() {
+    try {
+      return _prefs.getBool(_rememberMeKey) ?? false;
+    } catch (e) {
+      debugPrint('Error checking remember me status: $e');
+      return false;
+    }
+  }
+
+  /// Clear remembered credentials (when user unchecks "Remember Me")
+  Future<void> clearRememberedCredentials() async {
+    try {
+      await _prefs.remove(_rememberedUsernameKey);
+      await _prefs.remove(_rememberedPasswordKey);
+      await _prefs.remove(_rememberMeKey);
+      debugPrint('Remembered credentials cleared');
+    } catch (e) {
+      debugPrint('Error clearing remembered credentials: $e');
     }
   }
 }

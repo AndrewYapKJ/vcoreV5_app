@@ -20,6 +20,26 @@ class LoginController extends _$LoginController {
   @override
   LoginState build() {
     _loginCacheService = LoginCacheService();
+
+    // Load remembered credentials synchronously during initialization
+    try {
+      if (_loginCacheService.isRememberMeEnabled()) {
+        final username = _loginCacheService.getRememberedUsername();
+        final password = _loginCacheService.getRememberedPassword();
+
+        if (username != null && password != null) {
+          debugPrint('Remembered credentials loaded for: $username');
+          return LoginState.initial().copyWith(
+            userId: username,
+            password: password,
+            rememberMe: true,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading remembered credentials: $e');
+    }
+
     return LoginState.initial();
   }
 
@@ -61,9 +81,17 @@ class LoginController extends _$LoginController {
           await _storage.saveUserMobile(response.mobile!);
         }
 
+        // Save credentials if remember me is enabled
         if (state.rememberMe) {
           await _storage.saveRememberMe(true);
           await _storage.saveUserId(state.userId);
+          await _loginCacheService.saveRememberedCredentials(
+            username: state.userId.trim(),
+            password: state.password.trim(),
+          );
+        } else {
+          // Clear remembered credentials if remember me is not checked
+          await _loginCacheService.clearRememberedCredentials();
         }
 
         // Create user model from API response
@@ -113,7 +141,14 @@ class LoginController extends _$LoginController {
 
   void setUserId(String v) => state = state.copyWith(userId: v);
   void setPassword(String v) => state = state.copyWith(password: v);
-  void toggleRememberMe(bool v) => state = state.copyWith(rememberMe: v);
+
+  void toggleRememberMe(bool v) {
+    state = state.copyWith(rememberMe: v);
+    // If unchecking remember me, clear saved credentials immediately
+    if (!v) {
+      _loginCacheService.clearRememberedCredentials();
+    }
+  }
 
   Future<void> logout() async {
     // Clear cached login data
@@ -128,8 +163,8 @@ class LoginController extends _$LoginController {
 }
 
 class LoginState {
-  final String userId;
-  final String password;
+  String userId;
+  String password;
   final bool rememberMe;
   final bool isLoading;
   final String? errorMessage;

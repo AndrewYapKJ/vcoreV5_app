@@ -10,11 +10,40 @@ import 'package:vcore_v5_app/widgets/theme_mode.dart';
 import 'package:vcore_v5_app/widgets/custom_alert_dialog.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
-class LoginView extends ConsumerWidget {
+class LoginView extends ConsumerStatefulWidget {
   const LoginView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends ConsumerState<LoginView> {
+  late final TextEditingController _usernameController;
+  late final TextEditingController _passwordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController = TextEditingController();
+    _passwordController = TextEditingController();
+
+    // Initialize controllers with state values after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final login = ref.read(loginControllerProvider);
+      _usernameController.text = login.userId;
+      _passwordController.text = login.password;
+    });
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final login = ref.watch(loginControllerProvider);
     final notifier = ref.read(loginControllerProvider.notifier);
 
@@ -80,6 +109,7 @@ class LoginView extends ConsumerWidget {
                         context: context,
                         label: 'username'.tr(),
                         icon: Icons.phone_android_outlined,
+                        controller: _usernameController,
                         onChanged: notifier.setUserId,
                         errorText: login.userId.isEmpty
                             ? 'required'.tr()
@@ -93,6 +123,7 @@ class LoginView extends ConsumerWidget {
                         label: 'password'.tr(),
                         icon: Icons.lock_outline,
                         obscure: true,
+                        controller: _passwordController,
                         onChanged: notifier.setPassword,
                         errorText: login.password.length < 4
                             ? 'min_4_characters'.tr()
@@ -227,6 +258,7 @@ class LoginView extends ConsumerWidget {
     required BuildContext context,
     required String label,
     required IconData icon,
+    required TextEditingController controller,
     required ValueChanged<String> onChanged,
     String? errorText,
     bool obscure = false,
@@ -243,6 +275,7 @@ class LoginView extends ConsumerWidget {
         ),
         SizedBox(height: 6.h),
         TextField(
+          controller: controller,
           obscureText: obscure,
           onChanged: onChanged,
           style: context.font.copyWith(

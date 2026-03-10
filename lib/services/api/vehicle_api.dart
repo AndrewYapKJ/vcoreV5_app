@@ -69,6 +69,59 @@ class VehicleApi {
     }
   }
 
+  /// Get default/assigned vehicle for driver
+  /// POST /GetVehicleQRDefaultPM
+  ///
+  /// Request:
+  /// {
+  ///   "DriverID": "40",
+  ///   "TenantId": "2010"
+  /// }
+  ///
+  /// Response: Wrapped in "d" property
+  /// {
+  ///   "d": [
+  ///     {
+  ///       "ID": "47",
+  ///       "NO": "BAR9224",
+  ///       "Status": "1",
+  ///       "MDTUID": "0"
+  ///     }
+  ///   ]
+  /// }
+  Future<Vehicle?> getDefaultVehicle({
+    required String driverId,
+    required String tenantId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/GetVehicleQRDefaultPM',
+        data: {'DriverID': driverId, 'TenantId': tenantId},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data['d'];
+
+        if (data is List && data.isNotEmpty) {
+          return Vehicle.fromJson(data[0] as Map<String, dynamic>);
+        }
+
+        // Return null if no default vehicle assigned
+        return null;
+      }
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        message: 'Unexpected response format',
+        response: response,
+      );
+    } on DioException catch (e) {
+      debugPrint('GetDefaultVehicle API Error: ${e.message}');
+      // Return null instead of rethrowing to gracefully handle no default vehicle
+      return null;
+    }
+  }
+
   /// Search trailers endpoint
   /// POST /GetTrailerRegNoSearch
   ///

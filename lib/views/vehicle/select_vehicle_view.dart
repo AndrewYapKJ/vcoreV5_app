@@ -22,7 +22,9 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
   String? selectedVehicle;
   String searchQuery = '';
   String? lastSelectedVehicleId;
+  String? defaultVehicleId;
   late Future<List<Vehicle>> _vehiclesFuture;
+  bool _isLoadingDefaults = true;
   final VehicleService _vehicleService = VehicleService();
   final LoginCacheService _cacheService = LoginCacheService();
 
@@ -38,17 +40,58 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
     final tenantId = ref.read(tenantIdProvider);
 
     if (driverId != null && tenantId != null) {
+      // Initialize the future immediately (don't wait)
       _vehiclesFuture = _vehicleService.getVehicles(
         driverId: driverId,
         tenantId: tenantId,
       );
 
-      // Load last selected vehicle
-      await _loadLastSelectedVehicle();
+      // Load defaults in background
+      _loadDefaults(driverId, tenantId);
     } else {
       setState(() {
         _vehiclesFuture = Future.error('Driver ID or Tenant ID not found');
+        _isLoadingDefaults = false;
       });
+    }
+  }
+
+  Future<void> _loadDefaults(String driverId, String tenantId) async {
+    // Try to load default vehicle first
+    await _loadDefaultVehicle(driverId, tenantId);
+
+    // If no default vehicle, load last selected from cache
+    if (defaultVehicleId == null) {
+      await _loadLastSelectedVehicle();
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingDefaults = false;
+      });
+    }
+  }
+
+  Future<void> _loadDefaultVehicle(String driverId, String tenantId) async {
+    try {
+      final defaultVehicle = await _vehicleService.getDefaultVehicle(
+        driverId: driverId,
+        tenantId: tenantId,
+      );
+
+      if (defaultVehicle != null && mounted) {
+        setState(() {
+          defaultVehicleId = defaultVehicle.id;
+          selectedVehicle = defaultVehicle.id;
+        });
+        debugPrint(
+          '✅ Default vehicle loaded: ${defaultVehicle.plateNumber} (ID: ${defaultVehicle.id})',
+        );
+      } else {
+        debugPrint('ℹ️ No default vehicle assigned to this driver');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to load default vehicle: $e');
     }
   }
 
@@ -59,6 +102,11 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
         lastSelectedVehicleId = cachedVehicle['vehicleId'];
         selectedVehicle = cachedVehicle['vehicleId'];
       });
+      debugPrint(
+        '✅ Last selected vehicle loaded: ${cachedVehicle['vehicleName']} (ID: ${cachedVehicle['vehicleId']})',
+      );
+    } else {
+      debugPrint('ℹ️ No cached vehicle selection found');
     }
   }
 
@@ -70,10 +118,16 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
       return plate.contains(query);
     }).toList();
 
-    // Sort: last selected vehicle first, then others
+    // Sort: default vehicle first, then last selected, then others
     filtered.sort((a, b) {
+      // Default vehicle always first
+      if (a.id == defaultVehicleId) return -1;
+      if (b.id == defaultVehicleId) return 1;
+
+      // Then last selected vehicle
       if (a.id == lastSelectedVehicleId) return -1;
       if (b.id == lastSelectedVehicleId) return 1;
+
       return 0;
     });
 
@@ -102,21 +156,106 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
         child: FutureBuilder<List<Vehicle>>(
           future: _vehiclesFuture,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting ||
+                _isLoadingDefaults) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(color: colorScheme.primary),
-                    SizedBox(height: 16.h),
-                    Text(
-                      'Loading vehicles...',
-                      style: context.font
-                          .regular(context)
-                          .copyWith(
-                            fontSize: 14.sp,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    // Animated vehicle icon
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.easeInOut,
+                      builder: (context, double value, child) {
+                        return Transform.scale(
+                          scale: 0.8 + (value * 0.2),
+                          child: Opacity(
+                            opacity: 0.3 + (value * 0.7),
+                            child: Container(
+                              padding: EdgeInsets.all(32.w),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    colorScheme.primary.withValues(alpha: 0.2),
+                                    colorScheme.secondary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    blurRadius: 30,
+                                    spreadRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.directions_car_rounded,
+                                size: 80.sp,
+                                color: colorScheme.primary,
+                              ),
+                            ),
                           ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 32.h),
+                    // Loading indicator
+                    SizedBox(
+                      width: 40.w,
+                      height: 40.h,
+                      child: CircularProgressIndicator(
+                        color: colorScheme.primary,
+                        strokeWidth: 3,
+                      ),
+                    ),
+                    SizedBox(height: 24.h),
+                    // Loading text with animation
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOut,
+                      builder: (context, double value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Column(
+                            children: [
+                              Text(
+                                _isLoadingDefaults &&
+                                        snapshot.connectionState !=
+                                            ConnectionState.waiting
+                                    ? 'Preparing your vehicle...'
+                                    : 'Loading vehicles...',
+                                style: context.font
+                                    .semibold(context)
+                                    .copyWith(
+                                      fontSize: 16.sp,
+                                      color: colorScheme.onSurface,
+                                    ),
+                              ),
+                              SizedBox(height: 8.h),
+                              Text(
+                                'Please wait a moment',
+                                style: context.font
+                                    .regular(context)
+                                    .copyWith(
+                                      fontSize: 13.sp,
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -206,7 +345,11 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                             ),
                       ),
                       Text(
-                        'Select the vehicle you want to use for today',
+                        defaultVehicleId != null
+                            ? 'Your assigned vehicle is pre-selected'
+                            : lastSelectedVehicleId != null
+                            ? 'Your last used vehicle is highlighted'
+                            : 'Select the vehicle you want to use for today',
                         style: context.font
                             .regular(context)
                             .copyWith(
@@ -394,6 +537,8 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                           itemBuilder: (context, index) {
                             final vehicle = filteredVehicles[index];
                             final isSelected = selectedVehicle == vehicle.id;
+                            final isDefaultVehicle =
+                                vehicle.id == defaultVehicleId;
                             final isLastSelected =
                                 vehicle.id == lastSelectedVehicleId;
 
@@ -428,6 +573,19 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                               ),
                                             ],
                                           )
+                                        : isDefaultVehicle
+                                        ? LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              Colors.green.withValues(
+                                                alpha: 0.08,
+                                              ),
+                                              Colors.teal.withValues(
+                                                alpha: 0.04,
+                                              ),
+                                            ],
+                                          )
                                         : isLastSelected
                                         ? LinearGradient(
                                             begin: Alignment.topLeft,
@@ -453,6 +611,8 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                     border: Border.all(
                                       color: isSelected
                                           ? colorScheme.primary
+                                          : isDefaultVehicle
+                                          ? Colors.green.shade400
                                           : isLastSelected
                                           ? Colors.amber.shade300
                                           : colorScheme.outline.withValues(
@@ -460,11 +620,21 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                             ),
                                       width: isSelected
                                           ? 2
-                                          : isLastSelected
+                                          : isDefaultVehicle || isLastSelected
                                           ? 1.5
                                           : 1,
                                     ),
-                                    boxShadow: isLastSelected && !isSelected
+                                    boxShadow: isDefaultVehicle && !isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.green.withValues(
+                                                alpha: 0.25,
+                                              ),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ]
+                                        : isLastSelected && !isSelected
                                         ? [
                                             BoxShadow(
                                               color: Colors.amber.withValues(
@@ -487,8 +657,10 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                   ),
                                   child: Column(
                                     children: [
-                                      // Highlight badge for last selected
-                                      if (isLastSelected && !isSelected)
+                                      // Highlight badge for default or last selected
+                                      if ((isDefaultVehicle ||
+                                              isLastSelected) &&
+                                          !isSelected)
                                         Padding(
                                           padding: EdgeInsets.only(
                                             bottom: 10.h,
@@ -504,19 +676,36 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                                   gradient: LinearGradient(
                                                     begin: Alignment.topLeft,
                                                     end: Alignment.bottomRight,
-                                                    colors: [
-                                                      Colors.amber.shade400,
-                                                      Colors.orange.shade400,
-                                                    ],
+                                                    colors: isDefaultVehicle
+                                                        ? [
+                                                            Colors
+                                                                .green
+                                                                .shade400,
+                                                            Colors
+                                                                .teal
+                                                                .shade400,
+                                                          ]
+                                                        : [
+                                                            Colors
+                                                                .amber
+                                                                .shade400,
+                                                            Colors
+                                                                .orange
+                                                                .shade400,
+                                                          ],
                                                   ),
                                                   borderRadius:
                                                       BorderRadius.circular(8),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: Colors.amber
-                                                          .withValues(
-                                                            alpha: 0.4,
-                                                          ),
+                                                      color:
+                                                          (isDefaultVehicle
+                                                                  ? Colors.green
+                                                                  : Colors
+                                                                        .amber)
+                                                              .withValues(
+                                                                alpha: 0.4,
+                                                              ),
                                                       blurRadius: 8,
                                                       offset: const Offset(
                                                         0,
@@ -530,13 +719,18 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                                       MainAxisSize.min,
                                                   children: [
                                                     Icon(
-                                                      Icons.star_rounded,
+                                                      isDefaultVehicle
+                                                          ? Icons
+                                                                .check_circle_rounded
+                                                          : Icons.star_rounded,
                                                       size: 14.h,
                                                       color: Colors.white,
                                                     ),
                                                     SizedBox(width: 5.w),
                                                     Text(
-                                                      'Last used',
+                                                      isDefaultVehicle
+                                                          ? 'Assigned Vehicle'
+                                                          : 'Last used',
                                                       style: context.font
                                                           .bold(context)
                                                           .copyWith(
@@ -568,7 +762,7 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                                   BorderRadius.circular(12),
                                             ),
                                             child: Icon(
-                                              CupertinoIcons.car,
+                                              CupertinoIcons.car_fill,
                                               color: colorScheme.secondary,
                                               size: 24.h,
                                             ),
@@ -577,21 +771,15 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
 
                                           // Vehicle info
                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  vehicle.plateNumber,
-                                                  style: context.font
-                                                      .semibold(context)
-                                                      .copyWith(
-                                                        fontSize: 14.sp,
-                                                        color: colorScheme
-                                                            .onSurface,
-                                                      ),
-                                                ),
-                                              ],
+                                            child: Text(
+                                              "${vehicle.id} - ${vehicle.plateNumber}",
+                                              style: context.font
+                                                  .semibold(context)
+                                                  .copyWith(
+                                                    fontSize: 14.sp,
+                                                    color:
+                                                        colorScheme.onSurface,
+                                                  ),
                                             ),
                                           ),
 

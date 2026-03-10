@@ -26,6 +26,24 @@ class VehicleService {
     }
   }
 
+  /// Get default/assigned vehicle for driver
+  /// Returns null if no default vehicle is assigned
+  Future<Vehicle?> getDefaultVehicle({
+    required String driverId,
+    required String tenantId,
+  }) async {
+    try {
+      final vehicle = await _vehicleApi.getDefaultVehicle(
+        driverId: driverId,
+        tenantId: tenantId,
+      );
+      return vehicle;
+    } catch (e) {
+      // Return null on error - no default vehicle
+      return null;
+    }
+  }
+
   /// Cache selected vehicle data
   /// Called when user selects a vehicle
   Future<void> cacheSelectedVehicle({

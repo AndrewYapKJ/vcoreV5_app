@@ -83,7 +83,9 @@ class _RequestViewState extends ConsumerState<RequestView> {
     if (cachedVehicle != null && mounted) {
       setState(() {
         selectedVehicle = cachedVehicle['plateNumber'];
-        vehicleController.text = cachedVehicle['plateNumber'] ?? '';
+        vehicleController.text = cachedVehicle['plateNumber'] != null
+            ? "${cachedVehicle['vehicleId']} - ${cachedVehicle['plateNumber']}"
+            : '';
       });
     }
   }
@@ -505,11 +507,22 @@ class _RequestViewState extends ConsumerState<RequestView> {
                       prefixIcon: Icons.directions_car_filled,
                       suggestionsCallback: (pattern) async {
                         await Future.delayed(const Duration(milliseconds: 100));
+                        print('🔍 Filtering vehicles with pattern: "$pattern"');
+                        print(
+                          "${(pattern).split('-')[0].toLowerCase()}",
+                        ); // Debug split pattern
                         return _availableVehicles
                             .where(
-                              (vehicle) => vehicle.plateNumber
-                                  .toLowerCase()
-                                  .contains(pattern.toLowerCase()),
+                              (vehicle) =>
+                                  vehicle.plateNumber.toLowerCase().contains(
+                                    (pattern).toLowerCase(),
+                                  ) ||
+                                  vehicle.id.toLowerCase().contains(
+                                    (pattern).toLowerCase(),
+                                  ) ||
+                                  pattern.toLowerCase().contains(
+                                    (vehicle.plateNumber).toLowerCase(),
+                                  ),
                             )
                             .toList();
                       },
@@ -523,7 +536,7 @@ class _RequestViewState extends ConsumerState<RequestView> {
                             ),
                             SizedBox(width: 12.w),
                             Text(
-                              vehicle.plateNumber,
+                              "${vehicle.id} - ${vehicle.plateNumber}",
                               style: context.font
                                   .regular(context)
                                   .copyWith(fontSize: 14.sp),
@@ -534,11 +547,13 @@ class _RequestViewState extends ConsumerState<RequestView> {
                       onSuggestionSelected: (vehicle) {
                         setState(() {
                           selectedVehicle = vehicle.plateNumber;
-                          vehicleController.text = vehicle.plateNumber;
+                          vehicleController.text =
+                              "${vehicle.id} - ${vehicle.plateNumber}";
                           vehicleError = null;
                         });
                       },
-                      suggestionDisplay: (vehicle) => vehicle.plateNumber,
+                      suggestionDisplay: (vehicle) =>
+                          "${vehicle.id} - ${vehicle.plateNumber}",
                       colorScheme: colorScheme,
                       context: context,
                       maxSuggestions: 5,

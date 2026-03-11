@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
+import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class MainShellScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -22,11 +23,14 @@ class MainShellScaffold extends ConsumerStatefulWidget {
 
 class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
   late GlobalKey<ScaffoldState> _scaffoldKey;
-
+  late LoginCacheService _cacheService;
+  String? selectedVehicle;
   @override
   void initState() {
     super.initState();
     _scaffoldKey = GlobalKey<ScaffoldState>();
+    _cacheService = LoginCacheService();
+    _loadCachedVehicle();
   }
 
   String _getPageTitle(int index) {
@@ -39,6 +43,18 @@ class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
         return 'incentive'.tr();
       default:
         return 'dashboard'.tr();
+    }
+  }
+
+  Future<void> _loadCachedVehicle() async {
+    final cachedVehicle = _cacheService.getCachedVehicleSelection();
+    if (cachedVehicle != null && mounted) {
+      "${cachedVehicle['vehicleId']} - ${cachedVehicle['plateNumber']}";
+      setState(() {
+        selectedVehicle = cachedVehicle['plateNumber'] != null
+            ? "${cachedVehicle['vehicleId']} - ${cachedVehicle['plateNumber']}"
+            : '';
+      });
     }
   }
 
@@ -229,17 +245,17 @@ class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
                   Row(
                     children: [
                       Icon(
-                        Icons.verified_user,
-                        size: 10.h,
-                        color: Colors.green,
+                        Icons.local_shipping,
+                        size: 12.h,
+                        color: colorScheme.primary,
                       ),
                       SizedBox(width: 3.w),
                       Text(
-                        'Driver • ID: ${ref.watch(driverIdProvider) ?? '0'}',
+                        '$selectedVehicle',
                         style: context.font
                             .regular(context)
                             .copyWith(
-                              fontSize: 10.sp,
+                              fontSize: 12.sp,
                               color: colorScheme.onSurface.withValues(
                                 alpha: 0.6,
                               ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,9 +10,11 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
+import 'package:vcore_v5_app/models/trailer_search_model.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
+import 'package:vcore_v5_app/services/api/vehicle_api.dart';
 import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import 'package:vcore_v5_app/services/job_service.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
@@ -42,6 +45,13 @@ class _JobListViewState extends ConsumerState<JobListView>
   bool _isPickingImages = false;
   bool _isUpdatingJobDetails = false;
   String? _errorMessage;
+
+  // Trailer search state for edit dialog
+  Timer? _editTrailerSearchDebounce;
+  List<TrailerSearchResult> _editTrailerSearchResults = [];
+  bool _isEditSearchingTrailers = false;
+  bool _isEditSelectingTrailer = false;
+  final VehicleApi _vehicleApi = VehicleApi();
 
   @override
   void initState() {
@@ -242,8 +252,8 @@ class _JobListViewState extends ConsumerState<JobListView>
   Widget _buildJobTypeSelector(Color accentColor, bool isHMS, bool isDark) {
     return GestureDetector(
       onTap: () {
-        final nextIndex = (_jobTypeTabController.index + 1) % 2;
-        _jobTypeTabController.animateTo(nextIndex);
+        // final nextIndex = (_jobTypeTabController.index + 1) % 2;
+        // _jobTypeTabController.animateTo(nextIndex);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -563,7 +573,9 @@ class _JobListViewState extends ConsumerState<JobListView>
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
-      height: 300.h, // Increased height to accommodate action buttons
+      constraints: BoxConstraints(
+        maxHeight: 286.h,
+      ), // Increased height to accommodate action buttons
       child: Stack(
         children: [
           PageView(
@@ -826,7 +838,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                       icon: Icons.location_on_outlined,
                       label: 'From',
                       value: job.pickOrgShortCode?.isNotEmpty == true
-                          ? '${job.pickOrgShortCode} - ${job.pickup ?? ''}'
+                          ? '${job.pickOrgShortCode}'
                           : job.pickup ?? '',
                       color: Colors.grey[700],
                     ),
@@ -835,7 +847,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                       icon: Icons.location_on,
                       label: 'To',
                       value: job.dropOrgShortCode?.isNotEmpty == true
-                          ? '${job.dropOrgShortCode} - ${job.drop ?? ''}'
+                          ? '${job.dropOrgShortCode}'
                           : job.drop ?? '',
                       color: cardColor,
                     ),
@@ -863,15 +875,6 @@ class _JobListViewState extends ConsumerState<JobListView>
                             color: Colors.orange,
                             onTap: () =>
                                 _onJobCardLongPress(context, job, colorScheme),
-                          ),
-                        ),
-                        SizedBox(width: 3.w),
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            icon: Icons.arrow_forward_ios_rounded,
-                            label: 'Details',
-                            color: cardColor,
-                            onTap: () => _onJobCardTap(context, job),
                           ),
                         ),
                       ],
@@ -1090,7 +1093,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                           icon: Icons.location_on_outlined,
                           label: 'From',
                           value: job.pickOrgShortCode?.isNotEmpty == true
-                              ? '${job.pickOrgShortCode} - ${job.pickup ?? ''}'
+                              ? '${job.pickOrgShortCode}'
                               : job.pickup ?? '',
                           color: Colors.grey[700],
                         ),
@@ -1099,7 +1102,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                           icon: Icons.location_on,
                           label: 'To',
                           value: job.dropOrgShortCode?.isNotEmpty == true
-                              ? '${job.dropOrgShortCode} - ${job.drop ?? ''}'
+                              ? '${job.dropOrgShortCode}'
                               : job.drop ?? '',
                           color: statusColor,
                         ),
@@ -1134,15 +1137,6 @@ class _JobListViewState extends ConsumerState<JobListView>
                                   job,
                                   colorScheme,
                                 ),
-                              ),
-                            ),
-                            SizedBox(width: 3.w),
-                            Expanded(
-                              child: _buildQuickActionButton(
-                                icon: Icons.arrow_forward_ios_rounded,
-                                label: 'Details',
-                                color: statusColor,
-                                onTap: () => _onJobCardTap(context, job),
                               ),
                             ),
                           ],
@@ -1494,12 +1488,12 @@ class _JobListViewState extends ConsumerState<JobListView>
   Widget _buildJobDetailsGrid(Job job, bool isHMS) {
     final items = isHMS
         ? [
-            {
-              'label': 'Truck',
-              'value': job.truckNo ?? '-',
-              'icon': Icons.local_shipping,
-              'color': const Color(0xFF3B82F6),
-            },
+            // {
+            //   'label': 'Truck',
+            //   'value': job.truckNo ?? '-',
+            //   'icon': Icons.local_shipping,
+            //   'color': const Color(0xFF3B82F6),
+            // },
             {
               'label': 'Container',
               'value': job.containerNo ?? '-',
@@ -1638,7 +1632,8 @@ class _JobListViewState extends ConsumerState<JobListView>
     required VoidCallback onTap,
     bool isLoading = false,
   }) {
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(10.r),
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -2199,8 +2194,9 @@ class _JobListViewState extends ConsumerState<JobListView>
     );
   }
 
-  /// Show dialog to edit job details (container, seal, trailer, remarks)
-  void _showEditJobDetailsDialog(BuildContext context, Job job) {
+  /// Show dialog to edit job details (container, seal, trailer with search, remarks)
+  void _showEditJobDetailsDialog(BuildContext context, Job job) async {
+    final colorScheme = Theme.of(context).colorScheme;
     final containerController = TextEditingController(
       text: job.containerNo ?? '',
     );
@@ -2208,150 +2204,520 @@ class _JobListViewState extends ConsumerState<JobListView>
     final trailerController = TextEditingController(text: job.trailerNo ?? '');
     final remarksController = TextEditingController(text: job.remarks ?? '');
 
+    // Track selected trailer ID
+    String? selectedTrailerId;
+
+    // If job already has trailer, fetch its ID
+    final existingTrailerNo = job.trailerNo?.trim() ?? '';
+    if (existingTrailerNo.isNotEmpty) {
+      try {
+        final tenantId = LoginCacheService().getCachedTenantId();
+        if (tenantId != null) {
+          final containerSize = job.containerSize ?? '40';
+          final size = containerSize.replaceAll(RegExp(r'[^0-9]'), '');
+          final sizeToUse = size.isEmpty ? '40' : size;
+
+          final results = await _vehicleApi.searchTrailers(
+            trailerRegNo: existingTrailerNo,
+            trSize: sizeToUse,
+            tenantId: tenantId,
+          );
+
+          if (results.isNotEmpty) {
+            selectedTrailerId = results.first.trailerID;
+            debugPrint(
+              '✅ Found existing trailer ID: $selectedTrailerId for $existingTrailerNo',
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Could not fetch existing trailer ID: $e');
+      }
+    }
+
+    // Reset trailer search state
+    _editTrailerSearchResults = [];
+    _isEditSearchingTrailers = false;
+    _isEditSelectingTrailer = false;
+
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
+        // Local state for dialog
+        bool isUpdating = false;
+
         return StatefulBuilder(
-          builder: (dialogContext, setState) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8.w),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.edit_outlined,
-                      color: Colors.blue,
-                      size: 22.sp,
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Edit Job Details',
-                          style: GoogleFonts.inter(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          'Job: ${job.no}',
-                          style: GoogleFonts.inter(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+          builder: (dialogContext, setDialogState) {
+            // Add listener for trailer search
+            trailerController.addListener(() {
+              if (_isEditSelectingTrailer) return;
+
+              _editTrailerSearchDebounce?.cancel();
+              final query = trailerController.text.trim();
+
+              if (query.isEmpty) {
+                setDialogState(() {
+                  _editTrailerSearchResults = [];
+                  _isEditSearchingTrailers = false;
+                });
+                return;
+              }
+
+              _editTrailerSearchDebounce = Timer(
+                const Duration(milliseconds: 500),
+                () => _searchEditTrailers(query, job, setDialogState),
+              );
+            });
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24.r),
               ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Container Number
-                    _buildEditFieldLabel('Container Number'),
-                    SizedBox(height: 6.h),
-                    _buildEditTextField(
-                      controller: containerController,
-                      hint: 'Enter container number',
-                      icon: Icons.inventory,
-                    ),
-                    SizedBox(height: 16.h),
-
-                    // Seal Number
-                    _buildEditFieldLabel('Seal Number'),
-                    SizedBox(height: 6.h),
-                    _buildEditTextField(
-                      controller: sealController,
-                      hint: 'Enter seal number',
-                      icon: Icons.lock,
-                    ),
-                    SizedBox(height: 16.h),
-
-                    // Trailer Number
-                    _buildEditFieldLabel('Trailer Number'),
-                    SizedBox(height: 6.h),
-                    _buildEditTextField(
-                      controller: trailerController,
-                      hint: 'Enter trailer number',
-                      icon: Icons.local_shipping,
-                    ),
-                    SizedBox(height: 16.h),
-
-                    // Remarks
-                    _buildEditFieldLabel('Remarks'),
-                    SizedBox(height: 6.h),
-                    _buildEditTextField(
-                      controller: remarksController,
-                      hint: 'Enter remarks',
-                      icon: Icons.note_outlined,
-                      maxLines: 3,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                constraints: BoxConstraints(maxHeight: 680.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.surface,
+                      colorScheme.surfaceContainerLow,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(24.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: _isUpdatingJobDetails
-                      ? null
-                      : () => Navigator.pop(dialogContext),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.inter(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _isUpdatingJobDetails
-                      ? null
-                      : () async {
-                          await _updateJobDetailsAPI(
-                            context: dialogContext,
-                            job: job,
-                            containerNo: containerController.text.trim(),
-                            sealNo: sealController.text.trim(),
-                            trailerNo: trailerController.text.trim(),
-                            remarks: remarksController.text.trim(),
-                          );
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    disabledBackgroundColor: Colors.grey[300],
-                  ),
-                  child: _isUpdatingJobDetails
-                      ? SizedBox(
-                          width: 20.w,
-                          height: 16.h,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Container(
+                      padding: EdgeInsets.all(20.w),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colorScheme.primary.withValues(alpha: 0.1),
+                            colorScheme.secondary.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24.r),
+                          topRight: Radius.circular(24.r),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.primary,
+                                  colorScheme.secondary,
+                                ],
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.edit_note_rounded,
+                              color: Colors.white,
+                              size: 24.sp,
+                            ),
                           ),
-                        )
-                      : Text(
-                          'Save Changes',
-                          style: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Edit Job Details',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  'Job: ${job.no ?? 'N/A'}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                            onPressed: _isUpdatingJobDetails
+                                ? null
+                                : () {
+                                    trailerController.removeListener(() {});
+                                    _editTrailerSearchDebounce?.cancel();
+                                    Navigator.pop(dialogContext);
+                                  },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(20.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Container Number
+                            _buildBeautifulEditField(
+                              context: dialogContext,
+                              label: 'Container Number',
+                              controller: containerController,
+                              hint: 'Enter container number',
+                              icon: Icons.inventory_2_rounded,
+                              colorScheme: colorScheme,
+                            ),
+                            SizedBox(height: 16.h),
+
+                            // Seal Number
+                            _buildBeautifulEditField(
+                              context: dialogContext,
+                              label: 'Seal Number',
+                              controller: sealController,
+                              hint: 'Enter seal number',
+                              icon: Icons.lock_rounded,
+                              colorScheme: colorScheme,
+                            ),
+                            SizedBox(height: 16.h),
+
+                            // Trailer Number with Search
+                            _buildBeautifulEditField(
+                              context: dialogContext,
+                              label: 'Trailer Number',
+                              controller: trailerController,
+                              hint: 'Search trailer...',
+                              icon: Icons.local_shipping_rounded,
+                              colorScheme: colorScheme,
+                              hasSearch: true,
+                            ),
+
+                            if (_editTrailerSearchResults.isNotEmpty ||
+                                _isEditSearchingTrailers)
+                              Container(
+                                margin: EdgeInsets.only(top: 8.h),
+                                constraints: BoxConstraints(maxHeight: 180.h),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHigh,
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  border: Border.all(
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: _isEditSearchingTrailers
+                                    ? Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(20.h),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: colorScheme.primary,
+                                          ),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        padding: EdgeInsets.all(4.w),
+                                        shrinkWrap: true,
+                                        itemCount:
+                                            _editTrailerSearchResults.length,
+                                        itemBuilder: (context, index) {
+                                          final trailer =
+                                              _editTrailerSearchResults[index];
+                                          return Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.r),
+                                              onTap: () {
+                                                setDialogState(() {
+                                                  _isEditSelectingTrailer =
+                                                      true;
+                                                  trailerController.text =
+                                                      trailer.trailerRegNo;
+                                                  selectedTrailerId =
+                                                      trailer.trailerID;
+                                                  _editTrailerSearchResults =
+                                                      [];
+                                                  _isEditSearchingTrailers =
+                                                      false;
+                                                });
+                                                Future.delayed(
+                                                  const Duration(
+                                                    milliseconds: 100,
+                                                  ),
+                                                  () {
+                                                    if (mounted) {
+                                                      setDialogState(() {
+                                                        _isEditSelectingTrailer =
+                                                            false;
+                                                      });
+                                                    }
+                                                  },
+                                                );
+                                              },
+                                              child: Container(
+                                                margin: EdgeInsets.symmetric(
+                                                  vertical: 4.h,
+                                                  horizontal: 4.w,
+                                                ),
+                                                padding: EdgeInsets.all(8.w),
+                                                decoration: BoxDecoration(
+                                                  color: colorScheme.surface,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        12.r,
+                                                      ),
+                                                  border: Border.all(
+                                                    color: colorScheme.outline
+                                                        .withValues(alpha: 0.1),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      padding: EdgeInsets.all(
+                                                        8.w,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: colorScheme
+                                                            .primary
+                                                            .withValues(
+                                                              alpha: 0.1,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8.r,
+                                                            ),
+                                                      ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .local_shipping_rounded,
+                                                        size: 18.sp,
+                                                        color:
+                                                            colorScheme.primary,
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 12.w),
+                                                    Expanded(
+                                                      child: Text(
+                                                        "${trailer.trailerID} - ${trailer.trailerRegNo}",
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 13.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: colorScheme
+                                                                  .onSurface,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            SizedBox(height: 16.h),
+
+                            // Remarks
+                            _buildBeautifulEditField(
+                              context: dialogContext,
+                              label: 'Remarks',
+                              controller: remarksController,
+                              hint: 'Enter remarks (optional)',
+                              icon: Icons.note_outlined,
+                              colorScheme: colorScheme,
+                              maxLines: 3,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Footer Actions
+                    Container(
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(24.r),
+                          bottomRight: Radius.circular(24.r),
+                        ),
+                        border: Border(
+                          top: BorderSide(
+                            color: colorScheme.outline.withValues(alpha: 0.1),
                           ),
                         ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: _isUpdatingJobDetails
+                                  ? null
+                                  : () {
+                                      trailerController.removeListener(() {});
+                                      _editTrailerSearchDebounce?.cancel();
+                                      Navigator.pop(dialogContext);
+                                    },
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  side: BorderSide(
+                                    color: colorScheme.outline.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: isUpdating
+                                  ? null
+                                  : () async {
+                                      setDialogState(() {
+                                        isUpdating = true;
+                                      });
+
+                                      final success =
+                                          await _updateJobDetailsAPI(
+                                            parentContext: context,
+                                            dialogContext: dialogContext,
+                                            job: job,
+                                            containerNo: containerController
+                                                .text
+                                                .trim(),
+                                            sealNo: sealController.text.trim(),
+                                            trailerRegNo: trailerController.text
+                                                .trim(),
+                                            trailerId: selectedTrailerId,
+                                            remarks: remarksController.text
+                                                .trim(),
+                                          );
+
+                                      if (mounted) {
+                                        setDialogState(() {
+                                          isUpdating = false;
+                                        });
+                                      }
+
+                                      trailerController.removeListener(() {});
+                                      _editTrailerSearchDebounce?.cancel();
+
+                                      // Only close dialog if successful
+                                      if (success && mounted) {
+                                        Navigator.pop(dialogContext);
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                backgroundColor: colorScheme.primary,
+                                disabledBackgroundColor: colorScheme.onSurface
+                                    .withValues(alpha: 0.12),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                              ),
+                              child: isUpdating
+                                  ? SizedBox(
+                                      width: 20.w,
+                                      height: 20.h,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.check_rounded, size: 18.sp),
+                                        SizedBox(width: 8.w),
+                                        Text(
+                                          'Save Changes',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r),
               ),
             );
           },
@@ -2360,62 +2726,150 @@ class _JobListViewState extends ConsumerState<JobListView>
     );
   }
 
-  Widget _buildEditFieldLabel(String label) {
-    return Text(
-      label,
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w700,
-        color: Colors.grey[800],
-      ),
-    );
-  }
-
-  Widget _buildEditTextField({
+  // Helper method to build beautiful edit fields
+  Widget _buildBeautifulEditField({
+    required BuildContext context,
+    required String label,
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    required ColorScheme colorScheme,
     int maxLines = 1,
+    bool hasSearch = false,
   }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12.sp),
-        prefixIcon: Icon(icon, color: Colors.blue.withValues(alpha: 0.6)),
-        filled: true,
-        fillColor: Colors.blue.withValues(alpha: 0.05),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.2)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16.sp, color: colorScheme.primary),
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ],
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue.withValues(alpha: 0.2)),
+        SizedBox(height: 8.h),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14.r),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurface,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(
+                fontSize: 13.sp,
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+              filled: true,
+              fillColor: colorScheme.surfaceContainerHigh,
+              suffixIcon: hasSearch
+                  ? Icon(
+                      Icons.search_rounded,
+                      color: colorScheme.primary.withValues(alpha: 0.5),
+                      size: 20.sp,
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide(
+                  color: colorScheme.outline.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14.r),
+                borderSide: BorderSide(color: colorScheme.primary, width: 2),
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12.w,
+                vertical: 8.h,
+              ),
+            ),
+          ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue, width: 2),
-        ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-      ),
-      style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w500),
+      ],
     );
   }
 
-  Future<void> _updateJobDetailsAPI({
-    required BuildContext context,
+  // Trailer search for edit dialog
+  Future<void> _searchEditTrailers(
+    String query,
+    Job job,
+    StateSetter setDialogState,
+  ) async {
+    setDialogState(() {
+      _isEditSearchingTrailers = true;
+    });
+
+    try {
+      final tenantId = LoginCacheService().getCachedTenantId();
+      if (tenantId == null) throw Exception('Tenant ID not found');
+
+      final containerSize = job.containerSize ?? '40';
+      final size = containerSize.replaceAll(RegExp(r'[^0-9]'), '');
+      final sizeToUse = size.isEmpty ? '40' : size;
+
+      debugPrint('🔍 Searching trailers: query=$query, size=$sizeToUse');
+
+      final results = await _vehicleApi.searchTrailers(
+        trailerRegNo: query,
+        trSize: sizeToUse,
+        tenantId: tenantId,
+      );
+
+      debugPrint('✅ Got ${results.length} trailer results');
+
+      if (mounted) {
+        setDialogState(() {
+          _editTrailerSearchResults = results;
+          _isEditSearchingTrailers = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error searching trailers: $e');
+      if (mounted) {
+        setDialogState(() {
+          _isEditSearchingTrailers = false;
+          _editTrailerSearchResults = [];
+        });
+      }
+    }
+  }
+
+  Future<bool> _updateJobDetailsAPI({
+    required BuildContext parentContext,
+    required BuildContext dialogContext,
     required Job job,
     required String containerNo,
     required String sealNo,
-    required String trailerNo,
+    required String trailerRegNo,
+    String? trailerId,
     required String remarks,
   }) async {
-    setState(() {
-      _isUpdatingJobDetails = true;
-    });
-
     try {
       final jobApi = JobApi();
       final tenantId = ref.read(tenantIdProvider) ?? '';
@@ -2424,10 +2878,13 @@ class _JobListViewState extends ConsumerState<JobListView>
         throw Exception('Tenant ID not found');
       }
 
+      // Check if job has B2B linking
+      final hasB2B = _hasValidB2B(job);
+
       final response = await jobApi.updateJobDetails(
         jobNo: job.no ?? '',
-        trailerID: job.id?.toString() ?? '',
-        trailerNo: trailerNo,
+        trailerID: trailerRegNo,
+        trailerNo: trailerId ?? '',
         containerNo: containerNo,
         sealNo: sealNo,
         remarks: remarks,
@@ -2437,32 +2894,73 @@ class _JobListViewState extends ConsumerState<JobListView>
         tenantId: tenantId,
       );
 
-      if (!mounted) return;
+      debugPrint('📦 Update job details response: $response');
 
-      if (response['result'] == true || response['success'] == true) {
+      if (!mounted) return false;
+
+      // Check if there's an error message in the response
+      final errorMsg =
+          response['Error'] ?? response['error'] ?? response['message'];
+      final hasError =
+          errorMsg != null && errorMsg.toString().trim().isNotEmpty;
+
+      if (hasError) {
+        // Use parent context to show error so it's not blocked by dialog
+        CustomSnackBar.showError(
+          parentContext,
+          message: errorMsg.toString(),
+          duration: const Duration(seconds: 4),
+        );
+        return true;
+      } else if (response['result'] == true ||
+          response['Result'] == true ||
+          response['success'] == true) {
+        // If job has B2B, update the B2B job as well
+        if (hasB2B && job.jobB2B != null && job.jobB2B!.isNotEmpty) {
+          debugPrint('📦 Updating B2B job: ${job.jobB2B}');
+          try {
+            await jobApi.updateJobDetails(
+              jobNo: job.jobB2B!,
+              trailerID: trailerRegNo,
+              trailerNo: trailerId ?? '',
+              containerNo: containerNo,
+              sealNo: sealNo,
+              remarks: remarks,
+              siteType: _selectedJobType,
+              pickQty: job.pickQty ?? '0',
+              dropQty: job.dropQty ?? '0',
+              tenantId: tenantId,
+            );
+            debugPrint('✅ B2B job updated successfully');
+          } catch (e) {
+            debugPrint('⚠️ Failed to update B2B job: $e');
+            // Don't fail the whole operation if B2B update fails
+          }
+        }
+
         CustomSnackBar.showSuccess(
-          context,
+          dialogContext,
           message: 'Job details updated successfully',
         );
-        Navigator.pop(context);
         await _fetchJobs();
+        return true;
       } else {
         CustomSnackBar.showError(
-          context,
-          message: response['message'] ?? 'Failed to update job details',
+          parentContext,
+          message: 'Failed to update job details',
         );
+        return false;
       }
     } catch (e) {
       debugPrint('❌ Error updating job details: $e');
       if (mounted) {
-        CustomSnackBar.showError(context, message: 'Error: ${e.toString()}');
+        CustomSnackBar.showError(
+          parentContext,
+          message: 'Error: ${e.toString()}',
+          duration: const Duration(seconds: 4),
+        );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdatingJobDetails = false;
-        });
-      }
+      return false;
     }
   }
 
@@ -2550,6 +3048,9 @@ class _JobListViewState extends ConsumerState<JobListView>
                                           context,
                                           'Failed to update job activity. Please try again.',
                                         );
+                                      }
+                                      if (success && mounted) {
+                                        Navigator.pop(context);
                                       }
                                     },
                               child: Padding(
@@ -2693,7 +3194,9 @@ class _JobListViewState extends ConsumerState<JobListView>
         Navigator.pop(dialogContext);
       }
 
-      if (result['result'] == true) {
+      if (result['result'] == true ||
+          result['Result'] == true ||
+          result['success'] == true) {
         // If B2B job exists, update it as well
         if (hasB2B && job.jobB2B != null && job.jobB2B!.isNotEmpty) {
           await jobApi.updateJobWithDateTime(

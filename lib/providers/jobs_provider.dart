@@ -17,14 +17,26 @@ final mdtFunctionsProvider = FutureProvider<MDTFunctionsResponse>((ref) async {
   return jobsApi.getMDTFunctions(tenantId: tenantId);
 });
 
-// Simple mutable state provider for current job activity
+// Notifier for current job activity code
 class _JobActivityNotifier extends Notifier<int?> {
   @override
-  int? build() => null;
+  int? build() {
+    ref.read(mdtFunctionsProvider);
+    return null;
+  }
+
+  void setActivity(int? activityCode) {
+    state = activityCode;
+  }
+
+  void clearActivity() {
+    state = null;
+  }
 }
 
 /// Provider to get/set the current job activity code (MDT Code)
 /// This should be set when a job is selected/opened
+/// Automatically fetches MDT functions on initialization
 final currentJobActivityProvider = NotifierProvider<_JobActivityNotifier, int?>(
   _JobActivityNotifier.new,
 );

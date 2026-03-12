@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/models/login_response_model.dart';
 import '../../services/update_service.dart';
 import '../../services/storage/login_cache_service.dart';
-import '../../services/api/jobs_api.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/jobs_provider.dart';
 import '../../widgets/update_dialog.dart';
 
 class SplashView extends ConsumerStatefulWidget {
@@ -99,9 +100,13 @@ class _SplashViewState extends ConsumerState<SplashView>
           context.go('/login');
           return;
         }
-
+        ref
+            .read(userDataProvider.notifier)
+            .state = loginCacheService.getCachedUserInfo() != null
+            ? LoginResponse.fromJson(loginCacheService.getCachedUserInfo()!)
+            : null;
         // Initialize user provider so it's ready for the app
-        ref.read(userDataProvider);
+        //    ref.read(userDataProvider);
 
         // Validate session with MDT Functions API
         final isValidSession = await _validateSessionWithMDTApi(tenantId);
@@ -123,13 +128,16 @@ class _SplashViewState extends ConsumerState<SplashView>
     }
   }
 
-  /// Validate session by calling MDT Functions API directly
-  /// The provider will be used when job list loads
+  /// Validate session by using MDT Functions provider
+  /// This ensures the data is cached in Riverpod and can be reused
   Future<bool> _validateSessionWithMDTApi(String tenantId) async {
     try {
-      // Call MDT Functions API directly to validate session
-      final jobsApi = JobsApi();
-      final mdtResponse = await jobsApi.getMDTFunctions(tenantId: tenantId);
+      // Invalidate to force a fresh fetch
+      ref.invalidate(mdtFunctionsProvider);
+
+      // Use the Riverpod provider to fetch MDT functions
+      // This will cache the data for use throughout the app
+      final mdtResponse = await ref.read(mdtFunctionsProvider.future);
 
       // If API call succeeds and returns functions, session is valid
       if (mdtResponse.isSuccess && mdtResponse.functions.isNotEmpty) {

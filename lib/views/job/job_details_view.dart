@@ -8,6 +8,7 @@ import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/models/trailer_search_model.dart';
 import 'package:vcore_v5_app/models/uploaded_file_model.dart';
@@ -517,7 +518,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           final response = await dio.post(
             '/app/ReceiveFile.ashx',
             data: formData,
-            queryParameters: {'id': _activeImageJob.id},
+            queryParameters: {'id': _activeImageJob.no},
           );
 
           if (response.statusCode == 200 && response.data != null) {
@@ -572,6 +573,46 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
+        );
+      }
+    }
+  }
+
+  /// Open location in maps app
+  Future<void> _openInMaps(String address) async {
+    if (address.isEmpty) {
+      _safeShowSnackBar(
+        context,
+        'Location address is not available',
+        Colors.orange,
+      );
+      return;
+    }
+
+    try {
+      // URL encode the address
+      final encodedAddress = Uri.encodeComponent(address);
+
+      // Create a universal map URL that works on both platforms
+      // This will open in Google Maps on Android and Apple Maps on iOS
+      final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$encodedAddress',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          _safeShowSnackBar(context, 'Could not open maps', Colors.red);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error opening maps: $e');
+      if (mounted) {
+        _safeShowSnackBar(
+          context,
+          'Error opening maps: ${e.toString()}',
+          Colors.red,
         );
       }
     }
@@ -663,27 +704,27 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         widget.job.headRun = _headRun;
         widget.job.trailerRun = _trailerRun;
 
-        // If B2B job exists, update it too
-        if (_hasB2B && widget.job.b2bData != null) {
-          try {
-            await jobApi.updateJobDetails(
-              jobNo: widget.job.b2bData!.no ?? '',
-              trailerNo:
-                  _selectedTrailerId, // Use selected trailer ID for B2B too
-              trailerID: trailerNo,
-              containerNo: containerNo,
-              sealNo: sealNo,
-              remarks: remarks,
-              siteType: 'HMS',
-              pickQty: widget.job.b2bData!.pickQty ?? '0',
-              dropQty: widget.job.b2bData!.dropQty ?? '0',
-              tenantId: tenantId,
-            );
-            debugPrint('✅ B2B job details updated successfully');
-          } catch (e) {
-            debugPrint('⚠️ Error updating B2B job: $e');
-          }
-        }
+        // // If B2B job exists, update it too
+        // if (_hasB2B && widget.job.b2bData != null) {
+        //   try {
+        //     await jobApi.updateJobDetails(
+        //       jobNo: widget.job.b2bData!.no ?? '',
+        //       trailerNo:
+        //           _selectedTrailerId, // Use selected trailer ID for B2B too
+        //       trailerID: trailerNo,
+        //       containerNo: containerNo,
+        //       sealNo: sealNo,
+        //       remarks: remarks,
+        //       siteType: 'HMS',
+        //       pickQty: widget.job.b2bData!.pickQty ?? '0',
+        //       dropQty: widget.job.b2bData!.dropQty ?? '0',
+        //       tenantId: tenantId,
+        //     );
+        //     debugPrint('✅ B2B job details updated successfully');
+        //   } catch (e) {
+        //     debugPrint('⚠️ Error updating B2B job: $e');
+        //   }
+        // }
 
         if (mounted) {
           CustomSnackBar.showSuccess(
@@ -888,17 +929,17 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               ]
             : [
                 // Update Job Activity Button (for non-B2B)
-                Padding(
-                  padding: EdgeInsets.only(right: 8.w),
-                  child: Tooltip(
-                    message: 'Update Job Activity',
-                    child: IconButton(
-                      icon: Icon(Icons.update, size: 20.h, color: Colors.blue),
-                      onPressed: () =>
-                          _showUpdateJobActivityDialog(context, widget.job),
-                    ),
-                  ),
-                ),
+                // Padding(
+                //   padding: EdgeInsets.only(right: 8.w),
+                //   child: Tooltip(
+                //     message: 'Update Job Activity',
+                //     child: IconButton(
+                //       icon: Icon(Icons.update, size: 20.h, color: Colors.blue),
+                //       onPressed: () =>
+                //           _showUpdateJobActivityDialog(context, widget.job),
+                //     ),
+                //   ),
+                // ),
               ],
       ),
       floatingActionButton: Container(
@@ -1073,7 +1114,130 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                 ],
               ),
             ),
-            SizedBox(height: 20.h),
+
+            // B2B Linked Job Card (only show on main job page)
+            if (_hasB2B && !isB2B && widget.job.b2bData != null) ...[
+              SizedBox(height: 6.h),
+              Column(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      _pageController.animateToPage(
+                        1,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(10.h),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFFF6B35).withValues(alpha: 0.15),
+                            const Color(0xFFFF6B35).withValues(alpha: 0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFFF6B35).withValues(alpha: 0.3),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFFFF6B35,
+                            ).withValues(alpha: 0.1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8.h),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFFF6B35,
+                              ).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.link,
+                              color: const Color(0xFFFF6B35),
+                              size: 16.h,
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Linked B2B Job',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(
+                                      0xFFFF6B35,
+                                    ).withValues(alpha: 0.8),
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  widget.job.b2bData!.no ?? '',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFFFF6B35),
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 4.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFFF6B35,
+                              ).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.swipe_right,
+                                  size: 12.h,
+                                  color: const Color(0xFFFF6B35),
+                                ),
+                                SizedBox(width: 6.w),
+                                Text(
+                                  'Swipe To View',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFFFF6B35),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            SizedBox(height: 12.h),
             // Container & Vehicle Details
             _buildSectionHeader(
               context,
@@ -1081,7 +1245,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               Icons.inventory_2,
               isDark,
             ),
-            SizedBox(height: 6.h),
+
             _buildDetailsGrid(context, isDark, [
               {
                 'label': 'Truck Number',
@@ -1112,8 +1276,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               },
             ]),
             SizedBox(height: 16.h),
-            _buildSectionHeader(context, 'Job Information', Icons.edit, isDark),
-            SizedBox(height: 6.h),
+            _buildSectionHeader(context, 'Job Details', Icons.edit, isDark),
+
             Container(
               padding: EdgeInsets.all(8.h),
               decoration: BoxDecoration(
@@ -1294,7 +1458,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                 ],
               ),
             ),
-            SizedBox(height: 20.h),
+            SizedBox(height: 15.h),
 
             // Location Details Section
             _buildSectionHeader(
@@ -1303,7 +1467,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               Icons.location_on,
               isDark,
             ),
-            SizedBox(height: 6.h),
+
             _buildLocationCard(
               context: context,
               title: 'Pickup Location',
@@ -1314,6 +1478,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               icon: Icons.location_on_outlined,
               color: Colors.green,
               isDark: isDark,
+              onTap: () => _openInMaps(widget.job.pickup ?? ""),
             ),
             SizedBox(height: 6.h),
             _buildLocationCard(
@@ -1326,147 +1491,105 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
               icon: Icons.location_on,
               color: Colors.red,
               isDark: isDark,
+              onTap: () => _openInMaps(widget.job.drop ?? ""),
             ),
-            SizedBox(height: 20.h),
+            SizedBox(height: 15.h),
 
-            _buildSectionHeader(
-              context,
-              'Job Information',
-              Icons.info_outline,
-              isDark,
-            ),
-            SizedBox(height: 6.h),
-            _buildInfoCard(
-              context: context,
-              label: 'Customer',
-              value: widget.job.customer ?? "",
-              icon: Icons.business,
-              isDark: isDark,
-            ),
-            _buildInfoCard(
-              context: context,
-              label: 'Master Order No',
-              value: widget.job.masterOrderNo ?? "",
-              icon: Icons.receipt_long,
-              isDark: isDark,
-            ),
-            _buildInfoCard(
-              context: context,
-              label: 'Gate Pass No',
-              value: widget.job.gatePassNo ?? "",
-              icon: Icons.card_membership,
-              isDark: isDark,
-            ),
-            _buildInfoCard(
-              context: context,
-              label: 'Gate Pass DateTime',
-              value: widget.job.gatePassDatetime ?? "",
-              icon: Icons.schedule,
-              isDark: isDark,
-            ),
-            _buildInfoCard(
-              context: context,
-              label: 'Container Operator',
-              value: widget.job.containerOperator ?? "",
-              icon: Icons.supervised_user_circle,
-              isDark: isDark,
-            ),
-            _buildInfoCard(
-              context: context,
-              label: 'Shipping Agent Ref',
-              value: widget.job.shippingAgentRefNo ?? "",
-              icon: Icons.verified_user,
-              isDark: isDark,
-            ),
-            SizedBox(height: 10.h),
+            // _buildInfoCard(
+            //   context: context,
+            //   label: 'Customer',
+            //   value: widget.job.customer ?? "",
+            //   icon: Icons.business,
+            //   isDark: isDark,
+            // ),
+            // _buildInfoCard(
+            //   context: context,
+            //   label: 'Master Order No',
+            //   value: widget.job.masterOrderNo ?? "",
+            //   icon: Icons.receipt_long,
+            //   isDark: isDark,
+            // ),
+            // _buildInfoCard(
+            //   context: context,
+            //   label: 'Gate Pass No',
+            //   value: widget.job.gatePassNo ?? "",
+            //   icon: Icons.card_membership,
+            //   isDark: isDark,
+            // ),
+            // _buildInfoCard(
+            //   context: context,
+            //   label: 'Gate Pass DateTime',
+            //   value: widget.job.gatePassDatetime ?? "",
+            //   icon: Icons.schedule,
+            //   isDark: isDark,
+            // ),
+            if (widget.job.deliveryInstruction != null &&
+                widget.job.deliveryInstruction!.isNotEmpty &&
+                widget.job.deliveryInstruction != '--') ...[
+              _buildSectionHeader(
+                context,
+                'Job Information',
+                Icons.info_outline,
+                isDark,
+              ),
+              SizedBox(height: 6.h),
+              _buildInfoCard(
+                context: context,
+                label: 'Container Operator',
+                value: widget.job.containerOperator ?? "",
+                icon: Icons.supervised_user_circle,
+                isDark: isDark,
+              ),
+              // _buildInfoCard(
+              //   context: context,
+              //   label: 'Shipping Agent Ref',
+              //   value: widget.job.shippingAgentRefNo ?? "",
+              //   icon: Icons.verified_user,
+              //   isDark: isDark,
+              // ),
+              SizedBox(height: 10.h),
+            ],
 
             // Additional Details
-            _buildSectionHeader(
-              context,
-              'Additional Details',
-              Icons.description,
-              isDark,
-            ),
-            SizedBox(height: 6.h),
-            _buildDetailsGrid(context, isDark, [
-              {
-                'label': 'Pickup Qty',
-                'value': widget.job.pickQty,
-                'icon': Icons.production_quantity_limits,
-              },
-              {
-                'label': 'Drop Qty',
-                'value': widget.job.dropQty,
-                'icon': Icons.inventory,
-              },
-              {
-                'label': 'Job Type',
-                'value': widget.job.jobType,
-                'icon': Icons.type_specimen,
-              },
-              {
-                'label': 'Job Priority',
-                'value': widget.job.joBpriority,
-                'icon': Icons.priority_high,
-              },
-              {
-                'label': 'Import/Export',
-                'value': widget.job.jobImportExport,
-                'icon': Icons.import_export,
-              },
-              {
-                'label': 'B2B',
-                'value': widget.job.jobB2B,
-                'icon': Icons.business_center,
-              },
-            ]),
-
-            // Remarks
-            if (widget.job.remarks != null &&
-                widget.job.remarks!.isNotEmpty &&
-                widget.job.remarks != '--')
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(10.h),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.notes, color: Colors.orange, size: 14.h),
-                        SizedBox(width: 6.w),
-                        Text(
-                          'Remarks',
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      widget.job.remarks ?? "",
-                      style: GoogleFonts.inter(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            SizedBox(height: 6.h),
+            // _buildSectionHeader(
+            //   context,
+            //   'Additional Details',
+            //   Icons.description,
+            //   isDark,
+            // ),
+            // SizedBox(height: 6.h),
+            // _buildDetailsGrid(context, isDark, [
+            //   {
+            //     'label': 'Pickup Qty',
+            //     'value': widget.job.pickQty,
+            //     'icon': Icons.production_quantity_limits,
+            //   },
+            //   {
+            //     'label': 'Drop Qty',
+            //     'value': widget.job.dropQty,
+            //     'icon': Icons.inventory,
+            //   },
+            //   {
+            //     'label': 'Job Type',
+            //     'value': widget.job.jobType,
+            //     'icon': Icons.type_specimen,
+            //   },
+            //   {
+            //     'label': 'Job Priority',
+            //     'value': widget.job.joBpriority,
+            //     'icon': Icons.priority_high,
+            //   },
+            //   {
+            //     'label': 'Import/Export',
+            //     'value': widget.job.jobImportExport,
+            //     'icon': Icons.import_export,
+            //   },
+            //   {
+            //     'label': 'B2B',
+            //     'value': widget.job.jobB2B,
+            //     'icon': Icons.business_center,
+            //   },
+            // ]),
 
             // Delivery Instructions
             if (widget.job.deliveryInstruction != null &&
@@ -1582,119 +1705,127 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     required IconData icon,
     required Color color,
     required bool isDark,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(12.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: 0.1), color.withValues(alpha: 0.04)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.h),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 16.h),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    if (shortCode.isNotEmpty)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 6.w,
-                          vertical: 3.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          shortCode,
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w800,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(12.h),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.1),
+              color.withValues(alpha: 0.04),
             ],
           ),
-          SizedBox(height: 6.h),
-          if (orgName.isNotEmpty && orgName != '--')
-            Padding(
-              padding: EdgeInsets.only(bottom: 6.h),
-              child: Text(
-                orgName,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          Text(
-            fullAddress,
-            style: GoogleFonts.inter(
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white70 : Colors.black54,
-              height: 1.4,
-            ),
-          ),
-          if (contactInfo.isNotEmpty && contactInfo != '--') ...[
-            SizedBox(height: 6.h),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               children: [
-                Icon(Icons.phone, size: 12.h, color: color),
-                SizedBox(width: 5.w),
+                Container(
+                  padding: EdgeInsets.all(8.h),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 16.h),
+                ),
+                SizedBox(width: 8.w),
                 Expanded(
-                  child: Text(
-                    contactInfo,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+
+                      if (shortCode.isNotEmpty) ...[
+                        Container(
+                          margin: EdgeInsets.only(top: 2.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 3.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            shortCode,
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w800,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (fullAddress.isNotEmpty) ...[
+                        Container(
+                          margin: EdgeInsets.only(top: 2.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 3.h,
+                          ),
+                          // decoration: BoxDecoration(
+                          //   color: color.withValues(alpha: 0.15),
+                          //   borderRadius: BorderRadius.circular(5),
+                          // ),
+                          child: Text(
+                            fullAddress,
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
             ),
+
+            if (contactInfo.isNotEmpty && contactInfo != '--') ...[
+              SizedBox(height: 6.h),
+              Row(
+                children: [
+                  Icon(Icons.phone, size: 12.h, color: color),
+                  SizedBox(width: 5.w),
+                  Expanded(
+                    child: Text(
+                      contactInfo,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1992,6 +2123,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     ColorScheme colorScheme,
     bool isDark,
   ) {
+    final mdtFunctionsAsync = ref.read(availableMDTFunctionsProvider);
+
     // Determine current status
     final mdtCode = widget.job.mdtCode;
     final mdtDesc = widget.job.mdtCodef;
@@ -2007,15 +2140,15 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     } else if (mdtCode == 108) {
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
-      statusText = mdtDesc != null && mdtDesc.isNotEmpty
-          ? mdtDesc
-          : 'COMPLETED';
+      statusText = mdtFunctionsAsync.value!
+          .firstWhere((f) => f.mdtCode == mdtCode)
+          .mdtDesc;
     } else if (mdtCode >= 100 && mdtCode < 108) {
       statusColor = Colors.orange;
       statusIcon = Icons.pending;
-      statusText = mdtDesc != null && mdtDesc.isNotEmpty
-          ? mdtDesc
-          : 'IN PROGRESS';
+      statusText = statusText = mdtFunctionsAsync.value!
+          .firstWhere((f) => f.mdtCode == mdtCode)
+          .mdtDesc;
     } else {
       statusColor = Colors.blue;
       statusIcon = Icons.info;
@@ -2069,14 +2202,14 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                           color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
-                      if (mdtCode != null && mdtCode > 0)
-                        Text(
-                          'Code: $mdtCode',
-                          style: GoogleFonts.inter(
-                            fontSize: 8.sp,
-                            color: isDark ? Colors.white60 : Colors.black54,
-                          ),
-                        ),
+                      // if (mdtCode != null && mdtCode > 0)
+                      //   Text(
+                      //     'Code: $mdtCode',
+                      //     style: GoogleFonts.inter(
+                      //       fontSize: 8.sp,
+                      //       color: isDark ? Colors.white60 : Colors.black54,
+                      //     ),
+                      //   ),
                     ],
                   ),
                 ),
@@ -2353,7 +2486,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
   /// Show dialog to select and update job activity
   void _showUpdateJobActivityDialog(BuildContext context, Job job) {
-    final mdtFunctionsAsync = ref.read(enabledMDTFunctionsProvider);
+    final mdtFunctionsAsync = ref.read(availableMDTFunctionsProvider);
     final currentMdtCode = job.mdtCode;
 
     mdtFunctionsAsync.when(

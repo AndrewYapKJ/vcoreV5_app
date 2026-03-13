@@ -80,7 +80,8 @@ class PTIService {
       }
 
       // Join all items with semicolon
-      final dataString = dataItems.join(';');
+      var dataString = dataItems.join(';');
+      dataString = "$dataString;";
 
       return await _ptiApi.savePTIData(
         pmid: vehicleId,

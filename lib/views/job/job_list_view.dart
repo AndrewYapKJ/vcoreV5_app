@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/models/trailer_search_model.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
@@ -574,7 +575,7 @@ class _JobListViewState extends ConsumerState<JobListView>
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       constraints: BoxConstraints(
-        maxHeight: 286.h,
+        maxHeight: 300.h,
       ), // Increased height to accommodate action buttons
       child: Stack(
         children: [
@@ -706,7 +707,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                                 child: Text(
                                   job.no ?? '',
                                   style: GoogleFonts.inter(
-                                    fontSize: 14.sp,
+                                    fontSize: 13.sp,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: -0.2,
                                   ),
@@ -811,15 +812,19 @@ class _JobListViewState extends ConsumerState<JobListView>
                             ),
                           ),
                           SizedBox(width: 7.w),
-                          Text(
-                            isMainCard
-                                ? _getStatusLabel(_selectedStatus)
-                                : 'B2B',
-                            style: GoogleFonts.inter(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w800,
-                              color: cardColor,
-                              letterSpacing: 0.3,
+                          Container(
+                            constraints: BoxConstraints(maxWidth: 105.w),
+                            child: Text(
+                              isMainCard ? _getStatusLabel(job.mdtCode) : 'B2B',
+                              maxLines: 2,
+
+                              style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+
+                                fontWeight: FontWeight.w800,
+                                color: cardColor,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ],
@@ -838,18 +843,20 @@ class _JobListViewState extends ConsumerState<JobListView>
                       icon: Icons.location_on_outlined,
                       label: 'From',
                       value: job.pickOrgShortCode?.isNotEmpty == true
-                          ? '${job.pickOrgShortCode}'
+                          ? '${job.pickOrgShortCode} - ${job.pickup}'
                           : job.pickup ?? '',
                       color: Colors.grey[700],
+                      onTap: () => _openInMaps(job.pickup ?? ''),
                     ),
                     SizedBox(height: 6.h),
                     _buildLocationRow(
                       icon: Icons.location_on,
                       label: 'To',
                       value: job.dropOrgShortCode?.isNotEmpty == true
-                          ? '${job.dropOrgShortCode}'
+                          ? '${job.dropOrgShortCode} - ${job.drop}'
                           : job.drop ?? '',
                       color: cardColor,
+                      onTap: () => _openInMaps(job.drop ?? ''),
                     ),
                     SizedBox(height: 8.h),
                     _buildJobDetailsGrid(job, isHMS),
@@ -957,7 +964,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                                     child: Text(
                                       job.no?.toString() ?? '',
                                       style: GoogleFonts.inter(
-                                        fontSize: 14.sp,
+                                        fontSize: 13.sp,
                                         fontWeight: FontWeight.w900,
                                         letterSpacing: -0.2,
                                       ),
@@ -1067,13 +1074,17 @@ class _JobListViewState extends ConsumerState<JobListView>
                                 ),
                               ),
                               SizedBox(width: 7.w),
-                              Text(
-                                _getStatusLabel(_selectedStatus),
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: statusColor,
-                                  letterSpacing: 0.3,
+                              Container(
+                                constraints: BoxConstraints(maxWidth: 105.w),
+
+                                child: Text(
+                                  _getStatusLabel(job.mdtCode),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: statusColor,
+                                    letterSpacing: 0.3,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1093,18 +1104,20 @@ class _JobListViewState extends ConsumerState<JobListView>
                           icon: Icons.location_on_outlined,
                           label: 'From',
                           value: job.pickOrgShortCode?.isNotEmpty == true
-                              ? '${job.pickOrgShortCode}'
+                              ? '${job.pickOrgShortCode} - ${job.pickup}'
                               : job.pickup ?? '',
                           color: Colors.grey[700],
+                          onTap: () => _openInMaps(job.pickup ?? ''),
                         ),
                         SizedBox(height: 6.h),
                         _buildLocationRow(
                           icon: Icons.location_on,
                           label: 'To',
                           value: job.dropOrgShortCode?.isNotEmpty == true
-                              ? '${job.dropOrgShortCode}'
+                              ? '${job.dropOrgShortCode} - ${job.drop}'
                               : job.drop ?? '',
                           color: statusColor,
+                          onTap: () => _openInMaps(job.drop ?? ''),
                         ),
 
                         // B2B Linked Job Section
@@ -1410,16 +1423,19 @@ class _JobListViewState extends ConsumerState<JobListView>
     }
   }
 
-  String _getStatusLabel(String status) {
-    switch (status) {
-      case 'pending':
-        return 'Not Started';
-      case 'in-progress':
-        return 'In Progress';
-      case 'completed':
-        return 'Completed';
-      default:
-        return status;
+  String _getStatusLabel(int? mdtCode) {
+    final mdtFunctionsAsync = ref.read(availableMDTFunctionsProvider);
+
+    if (mdtCode == null || mdtCode == 0 || mdtCode < 100) {
+      return 'NOT STARTED';
+    } else if (mdtCode == 108) {
+      return 'COMPLETED';
+    } else if (mdtCode >= 100 && mdtCode < 108) {
+      return mdtFunctionsAsync.value!
+          .firstWhere((f) => f.mdtCode == mdtCode)
+          .mdtDesc;
+    } else {
+      return 'UNKNOWN';
     }
   }
 
@@ -1428,61 +1444,115 @@ class _JobListViewState extends ConsumerState<JobListView>
     required String label,
     required String value,
     required Color? color,
+    VoidCallback? onTap,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: EdgeInsets.all(6.w),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                (color ?? Colors.grey).withValues(alpha: 0.15),
-                (color ?? Colors.grey).withValues(alpha: 0.05),
-              ],
+    return InkWell(
+      onLongPress: onTap,
+      borderRadius: BorderRadius.circular(8.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 4.h, horizontal: 4.w),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.all(6.w),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    (color ?? Colors.grey).withValues(alpha: 0.15),
+                    (color ?? Colors.grey).withValues(alpha: 0.05),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: (color ?? Colors.grey).withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Icon(icon, size: 13.sp, color: color),
             ),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: (color ?? Colors.grey).withValues(alpha: 0.1),
-                blurRadius: 4,
-                spreadRadius: 0,
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 9.sp,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    value,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w800,
+                      // color: Colors.black87,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Icon(icon, size: 13.sp, color: color),
+            ),
+            if (onTap != null)
+              Icon(
+                Icons.map_outlined,
+                size: 16.sp,
+                color: color?.withValues(alpha: 0.5) ?? Colors.grey,
+              ),
+          ],
         ),
-        SizedBox(width: 8.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 9.sp,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                value,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w800,
-                  // color: Colors.black87,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
+  }
+
+  /// Open location in maps app
+  Future<void> _openInMaps(String address) async {
+    if (address.isEmpty) {
+      _safeShowSnackBar(
+        context,
+        'Location address is not available',
+        Colors.orange,
+      );
+      return;
+    }
+
+    try {
+      // URL encode the address
+      final encodedAddress = Uri.encodeComponent(address);
+
+      // Create a universal map URL that works on both platforms
+      // This will open in Google Maps on Android and Apple Maps on iOS
+      final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$encodedAddress',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          _safeShowSnackBar(context, 'Could not open maps', Colors.red);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error opening maps: $e');
+      if (mounted) {
+        _safeShowSnackBar(
+          context,
+          'Error opening maps: ${e.toString()}',
+          Colors.red,
+        );
+      }
+    }
   }
 
   Widget _buildJobDetailsGrid(Job job, bool isHMS) {
@@ -1902,7 +1972,7 @@ class _JobListViewState extends ConsumerState<JobListView>
           final response = await dio.post(
             '/app/ReceiveFile.ashx',
             data: formData,
-            queryParameters: {'id': jobId},
+            queryParameters: {'id': jobNo},
           );
 
           if (response.statusCode == 200 && response.data != null) {
@@ -2916,27 +2986,27 @@ class _JobListViewState extends ConsumerState<JobListView>
           response['Result'] == true ||
           response['success'] == true) {
         // If job has B2B, update the B2B job as well
-        if (hasB2B && job.jobB2B != null && job.jobB2B!.isNotEmpty) {
-          debugPrint('📦 Updating B2B job: ${job.jobB2B}');
-          try {
-            await jobApi.updateJobDetails(
-              jobNo: job.jobB2B!,
-              trailerID: trailerRegNo,
-              trailerNo: trailerId ?? '',
-              containerNo: containerNo,
-              sealNo: sealNo,
-              remarks: remarks,
-              siteType: _selectedJobType,
-              pickQty: job.pickQty ?? '0',
-              dropQty: job.dropQty ?? '0',
-              tenantId: tenantId,
-            );
-            debugPrint('✅ B2B job updated successfully');
-          } catch (e) {
-            debugPrint('⚠️ Failed to update B2B job: $e');
-            // Don't fail the whole operation if B2B update fails
-          }
-        }
+        // if (hasB2B && job.jobB2B != null && job.jobB2B!.isNotEmpty) {
+        //   debugPrint('📦 Updating B2B job: ${job.jobB2B}');
+        //   try {
+        //     await jobApi.updateJobDetails(
+        //       jobNo: job.jobB2B!,
+        //       trailerID: trailerRegNo,
+        //       trailerNo: trailerId ?? '',
+        //       containerNo: job.b2bData?.containerNo ?? "containerNo",
+        //       sealNo: sealNo,
+        //       remarks: remarks,
+        //       siteType: _selectedJobType,
+        //       pickQty: job.pickQty ?? '0',
+        //       dropQty: job.dropQty ?? '0',
+        //       tenantId: tenantId,
+        //     );
+        //     debugPrint('✅ B2B job updated successfully');
+        //   } catch (e) {
+        //     debugPrint('⚠️ Failed to update B2B job: $e');
+        //     // Don't fail the whole operation if B2B update fails
+        //   }
+        // }
 
         CustomSnackBar.showSuccess(
           dialogContext,
@@ -2966,7 +3036,7 @@ class _JobListViewState extends ConsumerState<JobListView>
 
   /// Show dialog to update job activity (MDT function)
   void _showUpdateJobActivityDialog(BuildContext context, Job job) {
-    final mdtFunctionsAsync = ref.read(enabledMDTFunctionsProvider);
+    final mdtFunctionsAsync = ref.read(availableMDTFunctionsProvider);
     final currentMdtCode = job.mdtCode;
 
     mdtFunctionsAsync.when(

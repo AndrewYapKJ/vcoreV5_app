@@ -72,7 +72,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     return widget.job;
   }
 
-  String get _activeImageJobNo => _activeImageJob.no ?? '';
+  String get _activeImageJobNo => _activeImageJob.id?.toString() ?? '';
 
   @override
   void initState() {
@@ -189,7 +189,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
     try {
       print('📷 Fetching images for job: $jobNo (page: ${_currentPage + 1})');
-      final images = await _jobApi.getJobImages(jobNo: jobNo);
+      final images = await _jobApi.getJobImages(jobNo: _activeImageJobNo);
       print('✅ Fetched ${images.length} images');
 
       if (mounted) {

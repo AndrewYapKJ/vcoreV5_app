@@ -1972,7 +1972,7 @@ class _JobListViewState extends ConsumerState<JobListView>
           final response = await dio.post(
             '/app/ReceiveFile.ashx',
             data: formData,
-            queryParameters: {'id': jobNo},
+            queryParameters: {'id': jobId},
           );
 
           if (response.statusCode == 200 && response.data != null) {

@@ -558,7 +558,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
       if (mounted) {
         setState(() {
-          _uploadedFilesCount += (successCount - queuedCount); // Count only actual uploads
+          _uploadedFilesCount +=
+              (successCount - queuedCount); // Count only actual uploads
           _isUploadingImages = false;
         });
 

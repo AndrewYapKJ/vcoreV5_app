@@ -8,7 +8,10 @@ class AdvancePaymentView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Text('advance_payment_request'.tr(), style: const TextStyle(fontSize: 24)),
+        child: Text(
+          'advance_payment_request'.tr(),
+          style: const TextStyle(fontSize: 24),
+        ),
       ),
     );
   }

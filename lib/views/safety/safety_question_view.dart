@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:vcore_v5_app/core/font_styling.dart';
-import 'package:vcore_v5_app/core/app_constants.dart';
+import 'package:vcore_v5_app/constant/font_styling.dart';
+import 'package:vcore_v5_app/constant/app_constants.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 
 class SafetyQuestionView extends ConsumerStatefulWidget {

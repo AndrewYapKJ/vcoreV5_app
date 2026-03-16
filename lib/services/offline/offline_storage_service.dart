@@ -112,8 +112,15 @@ class OfflineStorageService {
     Map<String, dynamic>? data,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? optimisticData,
+    String? cacheKey,
   }) async {
     try {
+      if (_offlineQueueBox == null) {
+        debugPrint('❌ Error: Offline queue box not initialized!');
+        return;
+      }
+
       final request = {
         'id': DateTime.now().millisecondsSinceEpoch.toString(),
         'method': method,
@@ -121,21 +128,31 @@ class OfflineStorageService {
         'data': data,
         'headers': headers,
         'queryParameters': queryParameters,
+        'optimisticData': optimisticData,
+        'cacheKey': cacheKey,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'retryCount': 0,
       };
 
       await _offlineQueueBox?.add(request);
-      debugPrint('Queued offline request: $method $url');
+      final queueSize = _offlineQueueBox?.length ?? 0;
+      debugPrint(
+        '✅ Queued offline request: $method $url (Queue size: $queueSize)',
+      );
     } catch (e) {
-      debugPrint('Error queuing offline request: $e');
+      debugPrint('❌ Error queuing offline request: $e');
     }
   }
 
   static List<Map<dynamic, dynamic>> getQueuedRequests() {
     try {
-      return _offlineQueueBox?.values.toList() ?? [];
+      final requests = _offlineQueueBox?.values.toList() ?? [];
+      debugPrint(
+        '📋 Retrieved ${requests.length} queued requests from storage',
+      );
+      return requests;
     } catch (e) {
-      debugPrint('Error getting queued requests: $e');
+      debugPrint('❌ Error getting queued requests: $e');
       return [];
     }
   }
@@ -152,6 +169,28 @@ class OfflineStorageService {
       }
     } catch (e) {
       debugPrint('Error removing queued request: $e');
+    }
+  }
+
+  static Future<void> updateQueuedRequestRetry(
+    String requestId, {
+    required int newRetryCount,
+  }) async {
+    try {
+      final requests = _offlineQueueBox?.values.toList() ?? [];
+      for (int i = 0; i < requests.length; i++) {
+        if (requests[i]['id'] == requestId) {
+          requests[i]['retryCount'] = newRetryCount;
+          requests[i]['lastRetryTime'] = DateTime.now().millisecondsSinceEpoch;
+          await _offlineQueueBox?.putAt(i, requests[i]);
+          debugPrint(
+            'Updated retry count for request $requestId to $newRetryCount',
+          );
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating retry count: $e');
     }
   }
 

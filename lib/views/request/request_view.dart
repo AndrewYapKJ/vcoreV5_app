@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/constant/font_styling.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 import 'package:vcore_v5_app/widgets/custom_typeahead_field.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';

@@ -57,12 +57,38 @@ class OfflineQueueManager {
           debugPrint('Request queryParams: ${request['queryParameters']}');
 
           await _processRequest(request);
+
+          // Cache the response if cacheKey is provided and optimisticData exists
+          if (request['cacheKey'] != null &&
+              request['optimisticData'] != null) {
+            await OfflineStorageService.cacheApiResponse(
+              request['cacheKey'],
+              request['optimisticData'],
+            );
+            debugPrint('Cached response for key: ${request['cacheKey']}');
+          }
+
           await OfflineStorageService.removeQueuedRequest(request['id']);
           successCount++;
           debugPrint('Successfully processed request: ${request['id']}');
         } catch (e, stackTrace) {
           debugPrint('Failed to process queued request ${request['id']}: $e');
           debugPrint('Stack trace: $stackTrace');
+
+          // Increment retry count
+          final currentRetry = (request['retryCount'] as int?) ?? 0;
+          if (currentRetry < 3) {
+            await OfflineStorageService.updateQueuedRequestRetry(
+              request['id'],
+              newRetryCount: currentRetry + 1,
+            );
+            debugPrint('Retry count incremented to ${currentRetry + 1}');
+          } else {
+            // Max retries exceeded, remove the request
+            await OfflineStorageService.removeQueuedRequest(request['id']);
+            debugPrint('Request removed after max retries: ${request['id']}');
+          }
+
           failureCount++;
         }
       }

@@ -81,6 +81,9 @@ class _JobListViewState extends ConsumerState<JobListView>
 
     // Initial fetch
     _fetchJobs();
+
+    // Pre-cache all job lists for offline availability
+    _preloadJobCache();
   }
 
   Future<void> _fetchJobs() async {
@@ -114,6 +117,67 @@ class _JobListViewState extends ConsumerState<JobListView>
         _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  /// Pre-cache all job lists (pending, in-progress, completed) for both HMS and TMS
+  /// This ensures data is available even if user goes offline
+  Future<void> _preloadJobCache() async {
+    try {
+      final driverId = LoginCacheService().getCachedDriverId() ?? '';
+      final tenantId = LoginCacheService().getCachedTenantId() ?? '';
+      final pm = LoginCacheService().getCachedVehicleId() ?? '';
+
+      debugPrint('🔄 Pre-caching all job lists...');
+
+      // Cache for both HMS and TMS
+      for (final siteType in ['HMS', 'TMS']) {
+        // Cache pending jobs (Status: 0)
+        try {
+          await _jobService.getJobs(
+            driverId: driverId,
+            status: 'pending',
+            pm: pm,
+            siteType: siteType,
+            tenantId: tenantId,
+          );
+          debugPrint('✅ Cached $siteType pending jobs');
+        } catch (e) {
+          debugPrint('⚠️ Failed to cache $siteType pending jobs: $e');
+        }
+
+        // Cache in-progress jobs (Status: 1)
+        try {
+          await _jobService.getJobs(
+            driverId: driverId,
+            status: 'in-progress',
+            pm: pm,
+            siteType: siteType,
+            tenantId: tenantId,
+          );
+          debugPrint('✅ Cached $siteType in-progress jobs');
+        } catch (e) {
+          debugPrint('⚠️ Failed to cache $siteType in-progress jobs: $e');
+        }
+
+        // Cache completed jobs (Status: 2)
+        try {
+          await _jobService.getJobs(
+            driverId: driverId,
+            status: 'completed',
+            pm: pm,
+            siteType: siteType,
+            tenantId: tenantId,
+          );
+          debugPrint('✅ Cached $siteType completed jobs');
+        } catch (e) {
+          debugPrint('⚠️ Failed to cache $siteType completed jobs: $e');
+        }
+      }
+
+      debugPrint('✅ Job list pre-caching complete');
+    } catch (e) {
+      debugPrint('❌ Error pre-caching job lists: $e');
     }
   }
 
@@ -3266,7 +3330,8 @@ class _JobListViewState extends ConsumerState<JobListView>
 
       if (result['result'] == true ||
           result['Result'] == true ||
-          result['success'] == true) {
+          result['success'] == true ||
+          result['queued'] == true) {
         // If B2B job exists, update it as well
         if (hasB2B && job.jobB2B != null && job.jobB2B!.isNotEmpty) {
           await jobApi.updateJobWithDateTime(
@@ -3278,7 +3343,7 @@ class _JobListViewState extends ConsumerState<JobListView>
           );
         }
 
-        // Refresh job list after successful update
+        // Refresh job list after successful update or queuing
         await _fetchJobs();
         return true;
       } else {

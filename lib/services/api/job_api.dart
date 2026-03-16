@@ -1,13 +1,14 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:vcore_v5_app/services/dio/dio_repo.dart';
+import 'package:dio/dio.dart';
+import 'package:vcore_v5_app/services/api_services/api_service.dart';
+import 'package:vcore_v5_app/services/offline/offline_storage_service.dart';
 import '../../models/job_model.dart';
 import '../../models/uploaded_file_model.dart';
 
 /// Job API Service
 /// Handles all job-related API calls
 class JobApi {
-  final Dio _dio = DioRepo().mDio;
+  final ApiService _apiService = ApiService();
 
   /// Get Jobs with Driver
   /// POST /GetJobswithdriver
@@ -38,8 +39,11 @@ class JobApi {
     required String siteType, // "HMS" or "TMS"
     required String tenantId,
   }) async {
+    final cacheKey =
+        'jobs_with_driver:$driverId:$status:$pm:$siteType:$tenantId';
+
     try {
-      final response = await _dio.post(
+      final result = await _apiService.post<List<Job>>(
         '/GetJobswithdriver',
         data: {
           'driverId': driverId,
@@ -48,23 +52,53 @@ class JobApi {
           'SiteType': siteType,
           'TenantId': tenantId,
         },
+        enableOfflineQueue: false,
+        fromJson: (data) {
+          if (data['d'] == null) {
+            throw Exception('Invalid response format: missing d property');
+          }
+          final list = data['d'] as List?;
+          return list?.map((json) => Job.fromJson(json)).toList() ?? [];
+        },
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['d'] as List?;
-        if (data != null) {
-          return data.map((json) => Job.fromJson(json)).toList();
+      if (result.isSuccess && result.data != null) {
+        // Cache successful response
+        await OfflineStorageService.cacheApiResponse(cacheKey, {
+          'jobs': result.data!.map((j) => j.toJson()).toList(),
+        });
+        debugPrint(
+          'Jobs with driver fetched and cached: ${result.data!.length}',
+        );
+        return result.data!;
+      } else {
+        // Try to use cached data on failure
+        final cachedData = OfflineStorageService.getCachedApiResponse(cacheKey);
+        if (cachedData != null && cachedData['jobs'] != null) {
+          final cachedJobs = (cachedData['jobs'] as List)
+              .map((json) => Job.fromJson(json as Map<String, dynamic>))
+              .toList();
+          debugPrint(
+            'Using cached jobs with driver due to API failure: ${cachedJobs.length}',
+          );
+          return cachedJobs;
         }
-        return [];
+        throw Exception(result.errorMessage ?? 'Failed to fetch jobs');
       }
+    } catch (e) {
+      debugPrint('GetJobsWithDriver API Error: $e');
 
-      throw DioException(
-        requestOptions: response.requestOptions,
-        message: 'Unexpected response format',
-        response: response,
-      );
-    } on DioException catch (e) {
-      debugPrint('GetJobsWithDriver API Error: ${e.message}');
+      // Fall back to cached data on exception
+      final cachedData = OfflineStorageService.getCachedApiResponse(cacheKey);
+      if (cachedData != null && cachedData['jobs'] != null) {
+        final cachedJobs = (cachedData['jobs'] as List)
+            .map((json) => Job.fromJson(json as Map<String, dynamic>))
+            .toList();
+        debugPrint(
+          'Using cached jobs with driver due to exception: ${cachedJobs.length}',
+        );
+        return cachedJobs;
+      }
       rethrow;
     }
   }
@@ -96,8 +130,10 @@ class JobApi {
     required String siteType, // "HMS" or "TMS"
     required String tenantId,
   }) async {
+    final cacheKey = 'jobs_list_today:$driverId:$pm:$siteType:$tenantId';
+
     try {
-      final response = await _dio.post(
+      final result = await _apiService.post<List<Job>>(
         '/Z_GetJobListToday',
         data: {
           'driverId': driverId,
@@ -105,23 +141,51 @@ class JobApi {
           'SiteType': siteType,
           'TenantId': tenantId,
         },
+        enableOfflineQueue: false,
+        fromJson: (data) {
+          if (data['d'] == null) {
+            throw Exception('Invalid response format: missing d property');
+          }
+          final list = data['d'] as List?;
+          return list?.map((json) => Job.fromJson(json)).toList() ?? [];
+        },
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['d'] as List?;
-        if (data != null) {
-          return data.map((json) => Job.fromJson(json)).toList();
+      if (result.isSuccess && result.data != null) {
+        // Cache successful response
+        await OfflineStorageService.cacheApiResponse(cacheKey, {
+          'completedJobs': result.data!.map((j) => j.toJson()).toList(),
+        });
+        debugPrint('Job list today fetched and cached: ${result.data!.length}');
+        return result.data!;
+      } else {
+        // Try to use cached data on failure
+        final cachedData = OfflineStorageService.getCachedApiResponse(cacheKey);
+        if (cachedData != null && cachedData['completedJobs'] != null) {
+          final cachedJobs = (cachedData['completedJobs'] as List)
+              .map((json) => Job.fromJson(json as Map<String, dynamic>))
+              .toList();
+          debugPrint(
+            'Using cached job list today due to API failure: ${cachedJobs.length}',
+          );
+          return cachedJobs;
         }
-        return [];
+        throw Exception(result.errorMessage ?? 'Failed to fetch job list');
       }
+    } catch (e) {
+      debugPrint('GetJobListToday API Error: $e');
 
-      throw DioException(
-        requestOptions: response.requestOptions,
-        message: 'Unexpected response format',
-        response: response,
-      );
-    } on DioException catch (e) {
-      debugPrint('GetJobListToday API Error: ${e.message}');
+      // Fall back to cached data on exception
+      final cachedData = OfflineStorageService.getCachedApiResponse(cacheKey);
+      if (cachedData != null && cachedData['completedJobs'] != null) {
+        final cachedJobs = (cachedData['completedJobs'] as List)
+            .map((json) => Job.fromJson(json as Map<String, dynamic>))
+            .toList();
+        debugPrint(
+          'Using cached job list today due to exception: ${cachedJobs.length}',
+        );
+        return cachedJobs;
+      }
       rethrow;
     }
   }
@@ -156,8 +220,16 @@ class JobApi {
     String lat = '0.0',
     String lon = '0.0',
   }) async {
+    final optimisticData = {
+      'jobId': jobId,
+      'driverId': driverId,
+      'mdtCode': mdtCode,
+      'updatedAt': DateTime.now().toIso8601String(),
+      'status': 'updated_offline',
+    };
+
     try {
-      final response = await _dio.post(
+      final result = await _apiService.post<Map<String, dynamic>>(
         '/UpdateJob',
         data: {
           'jobid': jobId,
@@ -165,27 +237,39 @@ class JobApi {
           'mdtcode': "0$mdtCode",
           'lat': lat,
           'lon': lon,
-          // 'job_laststatus_date_time': jobLastStatusDateTime,
           'TenantId': tenantId,
+        },
+        optimisticData: optimisticData,
+        enableOfflineQueue: true,
+        fromJson: (data) {
+          // Handle offline optimistic data format
+          if (data.containsKey('jobId') && data.containsKey('status')) {
+            return {'result': true, 'error': null};
+          }
+          if (data['d'] == null) {
+            throw Exception('Invalid response format: missing d property');
+          }
+          final responseData = data['d'] as Map<String, dynamic>;
+          return {
+            'result': responseData['Result'] ?? false,
+            'error': responseData['Error'],
+          };
         },
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['d'];
-        if (data != null) {
-          return {'result': data['Result'] ?? false, 'error': data['Error']};
-        }
-        return {'result': false, 'error': 'Unexpected response format'};
+      if (result.isSuccess) {
+        debugPrint('✅ UpdateJob Success');
+        return result.data ?? {'result': false, 'error': 'No response data'};
+      } else if (result.isOffline) {
+        // Request was queued offline
+        debugPrint('📋 UpdateJob queued for sync when online');
+        return {'result': true, 'error': null, 'queued': true};
+      } else {
+        throw Exception(result.errorMessage ?? 'Failed to update job');
       }
-
-      throw DioException(
-        requestOptions: response.requestOptions,
-        message: 'Unexpected response format',
-        response: response,
-      );
-    } on DioException catch (e) {
-      debugPrint('UpdateJob_withDTime API Error: ${e.response}');
-      rethrow;
+    } catch (e) {
+      debugPrint('UpdateJob_withDTime API Error: $e');
+      return {'result': false, 'error': e.toString()};
     }
   }
 
@@ -210,25 +294,61 @@ class JobApi {
   ///   ]
   /// }
   Future<List<UploadedFile>> getJobImages({required String jobNo}) async {
+    final cacheKey = 'job_images:$jobNo';
+
     try {
-      final response = await _dio.post('/GetJobImages', data: {'JobNo': jobNo});
-
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['d'] as List?;
-        if (data != null) {
-          return data.map((json) => UploadedFile.fromJson(json)).toList();
-        }
-        return [];
-      }
-
-      throw DioException(
-        requestOptions: response.requestOptions,
-        message: 'Unexpected response format',
-        response: response,
+      final result = await _apiService.post<List<UploadedFile>>(
+        '/GetJobImages',
+        data: {'JobNo': jobNo},
+        enableOfflineQueue: false,
+        fromJson: (data) {
+          if (data['d'] == null) {
+            throw Exception('Invalid response format: missing d property');
+          }
+          final list = data['d'] as List?;
+          return list?.map((json) => UploadedFile.fromJson(json)).toList() ??
+              [];
+        },
       );
-    } on DioException catch (e) {
-      debugPrint('GetJobImages API Error: ${e.message}');
-      rethrow;
+
+      if (result.isSuccess && result.data != null) {
+        // Cache successful response
+        await OfflineStorageService.cacheApiResponse(cacheKey, {
+          'images': result.data!.map((i) => i.toJson()).toList(),
+        });
+        debugPrint('Job images fetched and cached: ${result.data!.length}');
+        return result.data!;
+      } else {
+        // Try to use cached data on failure
+        final cachedData = OfflineStorageService.getCachedApiResponse(cacheKey);
+        if (cachedData != null && cachedData['images'] != null) {
+          final cachedImages = (cachedData['images'] as List)
+              .map(
+                (json) => UploadedFile.fromJson(json as Map<String, dynamic>),
+              )
+              .toList();
+          debugPrint(
+            'Using cached job images due to API failure: ${cachedImages.length}',
+          );
+          return cachedImages;
+        }
+        throw Exception(result.errorMessage ?? 'Failed to fetch job images');
+      }
+    } catch (e) {
+      debugPrint('GetJobImages API Error: $e');
+
+      // Fall back to cached data on exception
+      final cachedData = OfflineStorageService.getCachedApiResponse(cacheKey);
+      if (cachedData != null && cachedData['images'] != null) {
+        final cachedImages = (cachedData['images'] as List)
+            .map((json) => UploadedFile.fromJson(json as Map<String, dynamic>))
+            .toList();
+        debugPrint(
+          'Using cached job images due to exception: ${cachedImages.length}',
+        );
+        return cachedImages;
+      }
+      return [];
     }
   }
 
@@ -268,8 +388,18 @@ class JobApi {
     required String dropQty,
     required String tenantId,
   }) async {
+    final optimisticData = {
+      'jobNo': jobNo,
+      'trailerNo': trailerNo,
+      'containerNo': containerNo,
+      'sealNo': sealNo,
+      'remarks': remarks,
+      'updatedAt': DateTime.now().toIso8601String(),
+      'status': 'updated_offline',
+    };
+
     try {
-      final response = await _dio.post(
+      final result = await _apiService.post<Map<String, dynamic>>(
         '/UpdateJobDetails',
         data: {
           "formData": {
@@ -285,29 +415,128 @@ class JobApi {
             'TenantId': tenantId,
           },
         },
+        optimisticData: optimisticData,
+        enableOfflineQueue: true,
+        fromJson: (data) {
+          // Handle offline optimistic data format
+          if (data.containsKey('jobNo') && data.containsKey('status')) {
+            return {'result': true, 'message': 'Success'};
+          }
+          if (data['d'] == null) {
+            throw Exception('Invalid response format: missing d property');
+          }
+          return data['d'] as Map<String, dynamic>;
+        },
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final result = response.data['d'] as Map<String, dynamic>? ?? {};
-        debugPrint('✅ UpdateJobDetails Success: $result');
-        return result;
+      if (result.isSuccess) {
+        debugPrint('✅ UpdateJobDetails Success');
+        return result.data ?? {'result': true, 'message': 'Success'};
+      } else if (result.isOffline) {
+        // Request was queued offline
+        debugPrint('📋 UpdateJobDetails queued for sync when online');
+        return {
+          'result': true,
+          'message': 'Request queued - will sync when online',
+          'queued': true,
+        };
+      } else {
+        return {
+          'result': false,
+          'message': result.errorMessage ?? 'Error updating job details',
+          'error': result.errorMessage,
+        };
+      }
+    } catch (e) {
+      debugPrint('❌ UpdateJobDetails API Error: $e');
+      return {'result': false, 'message': e.toString(), 'error': e.toString()};
+    }
+  }
+
+  /// Upload Job Image
+  /// POST /app/ReceiveFile.ashx?id={jobNo}
+  ///
+  /// Supports offline queueing - when offline, queues the upload for later sync.
+  /// File uploads are queued with file path and metadata since FormData cannot be serialized.
+  ///
+  /// Request: FormData with 'files' field containing the image file
+  /// Response: HTTP 200 on success
+  Future<Map<String, dynamic>> uploadJobImage({
+    required String jobNo,
+    required String filePath,
+    required String fileName,
+  }) async {
+    // Use raw Dio for file uploads (ApiService not suitable for FormData)
+    try {
+      final dio = _apiService.dio; // Get the Dio instance from ApiService
+
+      final formData = FormData.fromMap({
+        'files': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final response = await dio.post(
+        '/app/ReceiveFile.ashx',
+        data: formData,
+        queryParameters: {'id': jobNo},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Image uploaded successfully: $fileName');
+        return {
+          'result': true,
+          'message': 'Image uploaded successfully',
+          'fileName': fileName,
+        };
+      } else {
+        throw Exception(
+          'Failed to upload image. Status: ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      debugPrint('❌ Upload failed with error: ${e.message}');
+
+      // Check if offline
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        debugPrint(
+          '📋 No internet connection - queueing upload for later sync',
+        );
+
+        // Queue the upload with file path and metadata
+        // This will be retried when connectivity is restored
+        await OfflineStorageService.queueOfflineRequest(
+          method: 'POST',
+          url: '/app/ReceiveFile.ashx?id=$jobNo',
+          data: {'filePath': filePath, 'fileName': fileName, 'jobNo': jobNo},
+          queryParameters: {'id': jobNo},
+          optimisticData: {
+            'result': true,
+            'message': 'Upload queued - will sync when online',
+            'fileName': fileName,
+            'queued': true,
+          },
+          cacheKey: 'job_image_upload:$jobNo:$fileName',
+        );
+
+        return {
+          'result': true,
+          'message': 'Image upload queued - will sync when online',
+          'fileName': fileName,
+          'queued': true,
+        };
       }
 
-      throw DioException(
-        requestOptions: response.requestOptions,
-        message: 'Unexpected response format',
-        response: response,
-      );
-    } on DioException catch (e) {
-      debugPrint('❌ UpdateJobDetails API Error: ${e.response}');
-      // Return error response for proper handling
       return {
         'result': false,
-        'message':
-            e.response?.data?['d']?['message'] ??
-            e.message ??
-            'Error updating job details',
-        'error': e.response?.data?['d']?['error'],
+        'message': 'Failed to upload image: ${e.message}',
+        'error': e.message,
+      };
+    } catch (e) {
+      debugPrint('❌ Upload error: $e');
+      return {
+        'result': false,
+        'message': 'Upload failed: $e',
+        'error': e.toString(),
       };
     }
   }

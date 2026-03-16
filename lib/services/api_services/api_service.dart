@@ -13,6 +13,9 @@ class ApiService {
 
   final Dio _dio = DioRepo().mDio;
 
+  /// Get the underlying Dio instance for advanced usage (e.g., file uploads)
+  Dio get dio => _dio;
+
   bool get _isOfflineModeEnabled => true;
 
   Future<ApiResult<T>> get<T>(
@@ -193,15 +196,10 @@ class ApiService {
             data: data,
             headers: options?.headers?.cast<String, dynamic>(),
             queryParameters: queryParameters,
+            optimisticData: optimisticData,
+            cacheKey:
+                'cache:$method:$path:${DateTime.now().millisecondsSinceEpoch}',
           );
-
-          if (optimisticData != null) {
-            final optimisticKey = 'optimistic:$method:$path:$requestId';
-            await OfflineStorageService.storeUserData(
-              optimisticKey,
-              optimisticData,
-            );
-          }
 
           // GlobalErrorService.showWarning(
           //     'Request queued for when connection is restored');

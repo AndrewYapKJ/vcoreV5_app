@@ -50,5 +50,9 @@ class MDTFunctionsResponse {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {'d': functions.map((f) => f.toJson()).toList(), 'Error': error};
+  }
+
   bool get isSuccess => functions.isNotEmpty && error == null;
 }

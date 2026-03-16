@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
-import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/constant/font_styling.dart';
 
 typedef SuggestionsCallback<T> = Future<List<T>> Function(String pattern);
 typedef ItemBuilder<T> = Widget Function(BuildContext context, T suggestion);

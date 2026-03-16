@@ -8,6 +8,8 @@ import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/services/firebase_service.dart';
 import 'package:vcore_v5_app/services/remote_config_service.dart';
 import 'package:vcore_v5_app/services/env_service.dart';
+import 'package:vcore_v5_app/services/offline/offline_storage_service.dart';
+import 'package:vcore_v5_app/services/offline/offline_queue_manager.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
@@ -55,6 +57,14 @@ void main() async {
 
   // Initialize remote config with fallback to Huawei
   await RemoteConfigService().initialize();
+
+  // Initialize offline storage service (for caching and offline queue)
+  try {
+    await OfflineStorageService.initialize();
+    debugPrint('✓ Offline storage service initialized');
+  } catch (e) {
+    debugPrint('✗ Offline storage initialization error: $e');
+  }
 
   runApp(
     ProviderScope(
@@ -106,14 +116,14 @@ class _MyAppState extends ConsumerState<MyApp> {
       // Process any existing queue if we start online
       if (connectivityService.isOnline) {
         debugPrint('App started online - processing any queued requests');
-        // OfflineQueueManager().processQueuedRequests();
+        await OfflineQueueManager().processQueuedRequests();
       }
 
       // Listen to connectivity changes and process queue when back online
       connectivityService.addListener(() {
         if (connectivityService.isOnline) {
           CustomSnackBar.showOnlineNotification();
-          //   OfflineQueueManager().processQueuedRequests();
+          OfflineQueueManager().processQueuedRequests();
         } else {
           CustomSnackBar.showOfflineNotification();
         }

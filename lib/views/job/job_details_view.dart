@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +15,6 @@ import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
 import 'package:vcore_v5_app/services/api/vehicle_api.dart';
-import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
@@ -99,6 +97,9 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
     // Initialize trailer ID from current job
     _initializeTrailerInfo();
+
+    // Pre-cache job-related data for offline availability
+    _preloadJobDetailsCache();
   }
 
   @override
@@ -164,6 +165,30 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     } catch (e) {
       print('❌ Error initializing trailer info: $e');
       // Don't show error snackbar for initialization, just log it
+    }
+  }
+
+  /// Pre-load job-related data for offline availability
+  /// Caches job images in the background without blocking UI
+  Future<void> _preloadJobDetailsCache() async {
+    try {
+      final jobNo = _activeImageJobNo;
+      if (jobNo.isEmpty) {
+        print('⚠️ No job number available for pre-cache, skipping');
+        return;
+      }
+
+      print('📷 Pre-caching images for job: $jobNo');
+
+      // Cache images for this job in the background
+      // This method already has built-in caching, so if offline or on retry,
+      // previously cached images will be returned
+      await _jobApi.getJobImages(jobNo: jobNo);
+
+      print('✅ Successfully pre-cached images for job: $jobNo');
+    } catch (e) {
+      // Log but don't error - pre-cache is non-critical
+      print('⚠️ Failed to pre-cache images: $e');
     }
   }
 
@@ -495,8 +520,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     });
 
     try {
-      final dio = DioRepo(baseUrl: 'https://vcore.x1.com.my').mDio;
       int successCount = 0;
+      int queuedCount = 0;
       final activeJobNo = _activeImageJobNo;
 
       if (activeJobNo.isEmpty) {
@@ -508,22 +533,23 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           final fileName =
               '$activeJobNo-${DateFormat("yyyyMMddHHmmss").format(DateTime.now())}';
 
-          final formData = FormData.fromMap({
-            'files': await MultipartFile.fromFile(
-              image.path,
-              filename: fileName,
-            ),
-          });
-
-          final response = await dio.post(
-            '/app/ReceiveFile.ashx',
-            data: formData,
-            queryParameters: {'id': _activeImageJob.no},
+          // Use JobApi method which supports offline queuing
+          final uploadResult = await _jobApi.uploadJobImage(
+            jobNo: _activeImageJob.no ?? '',
+            filePath: image.path,
+            fileName: fileName,
           );
 
-          if (response.statusCode == 200 && response.data != null) {
-            print('✅ Image uploaded: $fileName');
+          if (uploadResult['result'] == true) {
             successCount++;
+            if (uploadResult['queued'] == true) {
+              queuedCount++;
+              print('📋 Image queued for sync: $fileName');
+            } else {
+              print('✅ Image uploaded: $fileName');
+            }
+          } else {
+            print('❌ Failed to upload image: ${uploadResult['message']}');
           }
         } catch (e) {
           print('❌ Failed to upload image: $e');
@@ -532,21 +558,32 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
       if (mounted) {
         setState(() {
-          _uploadedFilesCount += successCount;
+          _uploadedFilesCount += (successCount - queuedCount); // Count only actual uploads
           _isUploadingImages = false;
         });
 
+        // Show different messages based on results
         if (successCount > 0) {
+          String message;
+          if (queuedCount > 0) {
+            message =
+                '${successCount - queuedCount} image(s) uploaded, $queuedCount queued for sync';
+          } else {
+            message = '$successCount image(s) uploaded successfully';
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('$successCount image(s) uploaded successfully'),
-              backgroundColor: Colors.green,
+              content: Text(message),
+              backgroundColor: queuedCount > 0 ? Colors.orange : Colors.green,
               duration: const Duration(seconds: 2),
             ),
           );
 
-          // Refresh the image list
-          _fetchUploadedImages();
+          // Refresh the image list (for successfully uploaded images)
+          if (successCount - queuedCount > 0) {
+            _fetchUploadedImages();
+          }
         }
 
         if (successCount < images.length) {
@@ -695,15 +732,15 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       // Close loading dialog
       Navigator.pop(context);
 
-      if (result['Result'] == true) {
-        // Update local job object
-        widget.job.containerNo = containerNo;
-        widget.job.sealNo = sealNo;
-        widget.job.trailerNo = trailerNo;
-        widget.job.remarks = remarks;
-        widget.job.headRun = _headRun;
-        widget.job.trailerRun = _trailerRun;
+      // Update local job object (for both online success and queued offline)
+      widget.job.containerNo = containerNo;
+      widget.job.sealNo = sealNo;
+      widget.job.trailerNo = trailerNo;
+      widget.job.remarks = remarks;
+      widget.job.headRun = _headRun;
+      widget.job.trailerRun = _trailerRun;
 
+      if (result['result'] == true || result['queued'] == true) {
         // // If B2B job exists, update it too
         // if (_hasB2B && widget.job.b2bData != null) {
         //   try {
@@ -727,18 +764,30 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         // }
 
         if (mounted) {
-          CustomSnackBar.showSuccess(
-            context,
-            message: _hasB2B
-                ? 'Both jobs updated successfully'
-                : 'Job details saved successfully',
-            duration: const Duration(seconds: 2),
-          );
+          // Show different message for queued vs saved
+          if (result['queued'] == true) {
+            CustomSnackBar.showSuccess(
+              context,
+              message: 'Job queued - will sync when online',
+              duration: const Duration(seconds: 3),
+            );
+          } else {
+            CustomSnackBar.showSuccess(
+              context,
+              message: _hasB2B
+                  ? 'Both jobs updated successfully'
+                  : 'Job details saved successfully',
+              duration: const Duration(seconds: 2),
+            );
+          }
           // Stay on the job details page - don't pop
           setState(() {});
         }
       } else {
-        final errorMessage = result['Error'] ?? 'Failed to save job details';
+        final errorMessage =
+            result['message'] ??
+            result['error'] ??
+            'Failed to save job details';
         if (mounted) {
           CustomSnackBar.showError(
             context,
@@ -2754,7 +2803,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         Navigator.pop(dialogContext!);
       }
 
-      if (result['result'] == true) {
+      if (result['result'] == true || result['queued'] == true) {
         // Update the local job object
         if (mounted) {
           setState(() {
@@ -2763,7 +2812,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           });
         }
 
-        // Refresh job details after successful update
+        // Refresh job details after successful update or queuing
         return true;
       } else {
         debugPrint('API returned false result: $result');

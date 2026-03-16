@@ -8,7 +8,10 @@ class LeaveApplicationView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Text('leave_application'.tr(), style: const TextStyle(fontSize: 24)),
+        child: Text(
+          'leave_application'.tr(),
+          style: const TextStyle(fontSize: 24),
+        ),
       ),
     );
   }

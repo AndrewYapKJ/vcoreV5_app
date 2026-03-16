@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/constant/font_styling.dart';
 import 'package:vcore_v5_app/controllers/theme_controller.dart';
 import 'package:vcore_v5_app/services/localization_storage_service.dart';
 import 'package:vcore_v5_app/themes/app_color_scheme.dart';

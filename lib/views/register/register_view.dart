@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:vcore_v5_app/controllers/register_controller.dart';
-import 'package:vcore_v5_app/core/font_styling.dart';
+import 'package:vcore_v5_app/constant/font_styling.dart';
 import 'package:vcore_v5_app/views/register/registration_success_view.dart';
 
 class RegisterView extends ConsumerWidget {

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:vcore_v5_app/services/dio/interceptor/logging.dart';
+import 'package:vcore_v5_app/services/offline/offline_storage_service.dart';
 
 class DioRepo {
   final Dio _dio;
@@ -20,6 +21,11 @@ class DioRepo {
     dio.interceptors.addAll([
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final token = OfflineStorageService.getAuthToken();
+          if (token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+
           return handler.next(options);
         },
         onResponse: (response, handler) {

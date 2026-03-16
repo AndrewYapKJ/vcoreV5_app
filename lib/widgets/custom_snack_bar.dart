@@ -4,13 +4,30 @@ import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 enum SnackBarType { success, error, info, warning }
 
 class CustomSnackBar {
+  static GlobalKey<NavigatorState>? _navigatorKey;
+
+  static void initialize(GlobalKey<NavigatorState> navigatorKey) {
+    _navigatorKey = navigatorKey;
+
+    if (_navigatorKey == null) {
+      debugPrint('CustomSnackBar: Navigator context not available yet');
+    }
+  }
+
   static void show(
-    BuildContext context, {
+    BuildContext? context, {
     required String message,
     SnackBarType type = SnackBarType.info,
     Duration duration = const Duration(seconds: 2),
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final nav = context ?? _navigatorKey?.currentContext;
+
+    // if (nav == null) {
+    //   debugPrint('CustomSnackBar: Navigator context not available yet');
+    //   return;
+    // }
+
+    final colorScheme = Theme.of(nav!).colorScheme;
 
     late IconData icon;
     late Color backgroundColor;
@@ -44,8 +61,8 @@ class CustomSnackBar {
         break;
     }
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(nav).clearSnackBars();
+    ScaffoldMessenger.of(nav).showSnackBar(
       SnackBar(
         content: Container(
           decoration: BoxDecoration(
@@ -70,7 +87,7 @@ class CustomSnackBar {
                 Expanded(
                   child: Text(
                     message,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(nav).textTheme.bodyMedium?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w800,
                       fontSize: 13.sp,
@@ -96,7 +113,7 @@ class CustomSnackBar {
   }
 
   static void showSuccess(
-    BuildContext context, {
+    BuildContext? context, {
     required String message,
     Duration duration = const Duration(seconds: 2),
   }) {
@@ -109,7 +126,7 @@ class CustomSnackBar {
   }
 
   static void showError(
-    BuildContext context, {
+    BuildContext? context, {
     required String message,
     Duration duration = const Duration(seconds: 2),
   }) {
@@ -122,7 +139,7 @@ class CustomSnackBar {
   }
 
   static void showWarning(
-    BuildContext context, {
+    BuildContext? context, {
     required String message,
     Duration duration = const Duration(seconds: 2),
   }) {
@@ -135,7 +152,7 @@ class CustomSnackBar {
   }
 
   static void showInfo(
-    BuildContext context, {
+    BuildContext? context, {
     required String message,
     Duration duration = const Duration(seconds: 2),
   }) {
@@ -145,5 +162,16 @@ class CustomSnackBar {
       type: SnackBarType.info,
       duration: duration,
     );
+  }
+
+  static void showOfflineNotification() {
+    showWarning(
+      null,
+      message: 'You are currently offline. Some features may be limited.',
+    );
+  }
+
+  static void showOnlineNotification() {
+    showSuccess(null, message: 'Connection restored! Syncing data...');
   }
 }

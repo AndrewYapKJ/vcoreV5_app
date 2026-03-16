@@ -1,14 +1,17 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/services/firebase_service.dart';
 import 'package:vcore_v5_app/services/remote_config_service.dart';
 import 'package:vcore_v5_app/services/env_service.dart';
+import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 import 'routes/app_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'controllers/theme_controller.dart';
 import 'themes/app_color_scheme.dart';
 
@@ -55,6 +58,7 @@ void main() async {
 
   runApp(
     ProviderScope(
+      // providers: [ChangeNotifierProvider(create: (_) => ConnectivityService())],
       child: ScaleKitBuilder(
         designWidth: 375,
         designHeight: 812,
@@ -63,18 +67,65 @@ void main() async {
           supportedLocales: const [Locale('en'), Locale('ms'), Locale('zh')],
           path: 'assets/lang',
           fallbackLocale: const Locale('en'),
-          child: const MyApp(),
+          child: MyApp(),
         ),
       ),
     ),
   );
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
+  static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>(
+    debugLabel: 'main_navigator',
+  );
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConsumerStatefulWidget> createState() {
+    return _MyAppState();
+  }
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    print("mavogaerasa das fsfdsg sdf ${MyApp.navigatorKey}");
+    _initializeServices();
+    super.initState();
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      // Initialize global error service with navigator key
+      CustomSnackBar.initialize(MyApp.navigatorKey);
+
+      // Initialize connectivity service
+      final connectivityService = ref.read(connectivityServiceProvider);
+      await connectivityService.initialize();
+
+      // Process any existing queue if we start online
+      if (connectivityService.isOnline) {
+        debugPrint('App started online - processing any queued requests');
+        // OfflineQueueManager().processQueuedRequests();
+      }
+
+      // Listen to connectivity changes and process queue when back online
+      connectivityService.addListener(() {
+        if (connectivityService.isOnline) {
+          CustomSnackBar.showOnlineNotification();
+          //   OfflineQueueManager().processQueuedRequests();
+        } else {
+          CustomSnackBar.showOfflineNotification();
+        }
+      });
+    } catch (e) {
+      debugPrint('Error initializing services: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final themeAsync = ref.watch(themeControllerProvider);
 
     return themeAsync.when(
@@ -87,6 +138,7 @@ class MyApp extends ConsumerWidget {
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,
           locale: context.locale,
+
           theme: FlexColorScheme.light(colors: scheme.light).toTheme,
           darkTheme: FlexColorScheme.dark(colors: scheme.dark).toTheme,
           themeMode: theme.themeMode,

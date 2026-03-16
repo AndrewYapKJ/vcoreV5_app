@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:vcore_v5_app/main.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/views/job/job_details_view.dart';
 import '../views/splash/splash_view.dart';
@@ -21,6 +22,7 @@ import '../views/pti/pti_page_view.dart';
 import '../views/notification/notification_view.dart';
 
 final GoRouter appRouter = GoRouter(
+  navigatorKey: MyApp.navigatorKey,
   initialLocation: '/splash',
   redirect: (context, state) {
     if (state.uri.toString() == '/') return '/login';

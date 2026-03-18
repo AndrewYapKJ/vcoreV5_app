@@ -57,7 +57,7 @@ final class JobListViewModelProvider
   }
 }
 
-String _$jobListViewModelHash() => r'bf1d07aa631841afebd692fd330f55e4d1f629bb';
+String _$jobListViewModelHash() => r'10998538d7f0f259d8cfe450eb21301faaf58f9a';
 
 /// Job Details ViewModel provider - supports multiple instances per job
 
@@ -128,7 +128,7 @@ final class JobDetailsViewModelProvider
 }
 
 String _$jobDetailsViewModelHash() =>
-    r'71a0ae9469cf9d5009a69ae5e6725c646ed91b3f';
+    r'7f34bdcf2bfb6be4c3303a5c69790917c3032375';
 
 /// Job Details ViewModel provider - supports multiple instances per job
 
@@ -151,3 +151,151 @@ final class JobDetailsViewModelFamily extends $Family
   @override
   String toString() => r'jobDetailsViewModelProvider';
 }
+
+/// PTI ViewModel provider
+
+@ProviderFor(ptiViewModel)
+final ptiViewModelProvider = PtiViewModelProvider._();
+
+/// PTI ViewModel provider
+
+final class PtiViewModelProvider
+    extends $FunctionalProvider<PTIViewModel, PTIViewModel, PTIViewModel>
+    with $Provider<PTIViewModel> {
+  /// PTI ViewModel provider
+  PtiViewModelProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ptiViewModelProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$ptiViewModelHash();
+
+  @$internal
+  @override
+  $ProviderElement<PTIViewModel> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PTIViewModel create(Ref ref) {
+    return ptiViewModel(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PTIViewModel value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PTIViewModel>(value),
+    );
+  }
+}
+
+String _$ptiViewModelHash() => r'9a658a3c846e9c2d19e3228a1b15722e8e19ed73';
+
+/// Vehicle ViewModel provider
+
+@ProviderFor(vehicleViewModel)
+final vehicleViewModelProvider = VehicleViewModelProvider._();
+
+/// Vehicle ViewModel provider
+
+final class VehicleViewModelProvider
+    extends
+        $FunctionalProvider<
+          VehicleViewModel,
+          VehicleViewModel,
+          VehicleViewModel
+        >
+    with $Provider<VehicleViewModel> {
+  /// Vehicle ViewModel provider
+  VehicleViewModelProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'vehicleViewModelProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$vehicleViewModelHash();
+
+  @$internal
+  @override
+  $ProviderElement<VehicleViewModel> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  VehicleViewModel create(Ref ref) {
+    return vehicleViewModel(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(VehicleViewModel value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<VehicleViewModel>(value),
+    );
+  }
+}
+
+String _$vehicleViewModelHash() => r'cadcd15722cd32efa8a6e4ac04888df04fb50881';
+
+/// Payment ViewModel provider
+
+@ProviderFor(paymentViewModel)
+final paymentViewModelProvider = PaymentViewModelProvider._();
+
+/// Payment ViewModel provider
+
+final class PaymentViewModelProvider
+    extends
+        $FunctionalProvider<
+          PaymentViewModel,
+          PaymentViewModel,
+          PaymentViewModel
+        >
+    with $Provider<PaymentViewModel> {
+  /// Payment ViewModel provider
+  PaymentViewModelProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'paymentViewModelProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$paymentViewModelHash();
+
+  @$internal
+  @override
+  $ProviderElement<PaymentViewModel> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PaymentViewModel create(Ref ref) {
+    return paymentViewModel(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PaymentViewModel value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PaymentViewModel>(value),
+    );
+  }
+}
+
+String _$paymentViewModelHash() => r'ecec2cb4104d9dfaba1b4fca00d4a87e95425c4d';

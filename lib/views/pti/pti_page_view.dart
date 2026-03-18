@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -6,6 +7,7 @@ import 'package:vcore_v5_app/constant/font_styling.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 import 'package:vcore_v5_app/services/pti_service.dart';
 import 'package:vcore_v5_app/models/pti_check_item_model.dart';
+import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 
 class PTIPageView extends StatefulWidget {
   final Map<String, dynamic>? vehicleData;
@@ -27,6 +29,8 @@ class _PTIPageViewState extends State<PTIPageView> {
   _selectedValues; // Maps "Category|SubCategory" to selected value
   bool _hasShownSkipDialog = false;
   bool _userChoseToRedoPTI = false;
+  bool _isOnline = true;
+  late ConnectivityService _connectivityService;
 
   @override
   void initState() {
@@ -34,9 +38,42 @@ class _PTIPageViewState extends State<PTIPageView> {
     _pageController = PageController();
     _currentVehicle =
         widget.vehicleData ?? LoginCacheService().getCachedVehicleSelection();
-    _ptiItemsFuture = _initializePTIItems();
     _categories = [];
     _selectedValues = {};
+
+    // Setup connectivity listening
+    _connectivityService = ConnectivityService();
+    _isOnline = _connectivityService.isOnline;
+    _connectivityService.addListener(_onConnectivityChanged);
+
+    _ptiItemsFuture = _initializePTIItems();
+  }
+
+  void _onConnectivityChanged() {
+    if (mounted) {
+      // Close dialog if it's open when connectivity changes
+      if (_hasShownSkipDialog) {
+        try {
+          Navigator.of(context, rootNavigator: true).pop();
+        } catch (e) {
+          debugPrint('Could not close dialog: $e');
+        }
+      }
+
+      setState(() {
+        _isOnline = _connectivityService.isOnline;
+        _hasShownSkipDialog =
+            false; // Reset dialog flag when connectivity changes
+        _ptiItemsFuture = _initializePTIItems(); // Reload PTI items
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivityService.removeListener(_onConnectivityChanged);
+    _pageController.dispose();
+    super.dispose();
   }
 
   String _resolveVehicleId() {
@@ -61,16 +98,40 @@ class _PTIPageViewState extends State<PTIPageView> {
       throw Exception('Vehicle ID not found. Please select a vehicle again.');
     }
 
-    return _ptiService.getPTICheckItemsByCategoryWithStatus(
-      vehicleId: vehicleId,
-      driverId: driverId,
-    );
-  }
+    // If ONLINE, always fetch fresh PTI from API
+    if (_isOnline) {
+      try {
+        return await _ptiService.getPTICheckItemsByCategoryWithStatus(
+          vehicleId: vehicleId,
+          driverId: driverId,
+        );
+      } catch (e) {
+        debugPrint('❌ API error when online: $e');
+        rethrow;
+      }
+    }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+    // If OFFLINE, check if PTI is already completed for today
+    final cacheService = LoginCacheService();
+    final isPTIDone = await cacheService.isPTICompletedForToday(
+      vehicleId: vehicleId,
+    );
+
+    if (isPTIDone) {
+      debugPrint(
+        '✅ PTI already completed for today (offline) - returning cached status',
+      );
+      // Return a response indicating PTI is complete with empty items
+      return PTICheckResponse(
+        isDoneForDay: true,
+        items: {}, // Empty map - no items to show
+      );
+    }
+
+    // Offline but no cache - throw error
+    throw Exception(
+      'No internet connection and no cached PTI data available. Please go online.',
+    );
   }
 
   void _handleNext() async {
@@ -129,6 +190,15 @@ class _PTIPageViewState extends State<PTIPageView> {
         Navigator.pop(context);
 
         if (success) {
+          // Cache PTI completion status for today
+          final cacheService = LoginCacheService();
+          await cacheService.cachePTICompletedForToday(
+            vehicleId: vehicleId,
+            inspectionData: jsonEncode(_selectedValues),
+          );
+
+          debugPrint('✅ PTI completion cached for today');
+
           // Show completion dialog
           _showCompletionDialog();
         } else {
@@ -382,9 +452,49 @@ class _PTIPageViewState extends State<PTIPageView> {
                   ),
                   SizedBox(height: 8.h),
 
+                  // Offline badge (if offline)
+                  if (!_isOnline)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 12.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 6.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.5),
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.wifi_off,
+                            size: 14.sp,
+                            color: Colors.orange,
+                          ),
+                          SizedBox(width: 6.w),
+                          Text(
+                            'Offline Mode',
+                            style: context.font
+                                .semibold(context)
+                                .copyWith(
+                                  fontSize: 12.sp,
+                                  color: Colors.orange,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Description
                   Text(
-                    'You have already completed PTI for today.\nWould you like to skip or redo it?',
+                    !_isOnline
+                        ? 'You have already completed PTI for today.\nYou can safely skip to the job list.'
+                        : 'You have already completed PTI for today.\nWould you like to skip or redo it?',
                     textAlign: TextAlign.center,
                     style: context.font
                         .regular(context)
@@ -427,38 +537,39 @@ class _PTIPageViewState extends State<PTIPageView> {
                   ),
                   SizedBox(height: 12.h),
 
-                  // Redo button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48.h,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _userChoseToRedoPTI = true;
-                        });
-                        Navigator.pop(context);
-                        // Close the dialog and allow user to redo PTI
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: colorScheme.primary,
-                          width: 1.5,
+                  // Redo button (only show if ONLINE)
+                  if (_isOnline)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48.h,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _userChoseToRedoPTI = true;
+                          });
+                          Navigator.pop(context);
+                          // Close the dialog and allow user to redo PTI
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: colorScheme.primary,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        child: Text(
+                          'Redo PTI',
+                          style: context.font
+                              .semibold(context)
+                              .copyWith(
+                                fontSize: 14.sp,
+                                color: colorScheme.primary,
+                              ),
                         ),
-                      ),
-                      child: Text(
-                        'Redo PTI',
-                        style: context.font
-                            .semibold(context)
-                            .copyWith(
-                              fontSize: 14.sp,
-                              color: colorScheme.primary,
-                            ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -574,7 +685,7 @@ class _PTIPageViewState extends State<PTIPageView> {
             final categoryItems = ptiResponse?.items ?? {};
             _categories = categoryItems.keys.toList();
 
-            // If PTI is already done for the day, show skip dialog
+            // Show skip dialog when PTI is already completed (online or offline)
             if (isDoneForDay && !_hasShownSkipDialog && !_userChoseToRedoPTI) {
               _hasShownSkipDialog = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -631,17 +742,18 @@ class _PTIPageViewState extends State<PTIPageView> {
                         ],
                       ),
                       SizedBox(height: 10.h),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: (_currentPage + 1) / _categories.length,
-                          minHeight: 6.h,
-                          backgroundColor: colorScheme.surfaceContainerHigh,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colorScheme.primary,
+                      if (_categories.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: (_currentPage + 1) / _categories.length,
+                            minHeight: 6.h,
+                            backgroundColor: colorScheme.surfaceContainerHigh,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colorScheme.primary,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

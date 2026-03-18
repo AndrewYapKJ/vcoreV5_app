@@ -303,6 +303,10 @@ class LoginCacheService {
       await _prefs.remove(_loginDataKey);
       await _prefs.remove(_vehicleSelectionKey);
       await _prefs.remove(_ptiStatusKey);
+
+      // Also clear PTI completion caches (resets when logging out)
+      await clearPTICaches();
+
       // NOTE: _rememberedUsernameKey, _rememberedPasswordKey, and _rememberMeKey are NOT removed
       // They persist across logout to support "Remember Me" functionality
       debugPrint('Cache cleared (remembered credentials preserved)');
@@ -480,6 +484,261 @@ class LoginCacheService {
       debugPrint('Remembered credentials cleared');
     } catch (e) {
       debugPrint('Error clearing remembered credentials: $e');
+    }
+  }
+
+  // ============================================================================
+  // VEHICLE CACHING - DATE-BASED FOR "ASSIGNED VEHICLE OF THE DAY"
+  // ============================================================================
+
+  static const String _assignedVehicleKey = 'assigned_vehicle_today_';
+
+  /// Cache assigned vehicle for today (with date validation)
+  /// Can be used for "assigned vehicle of the day" feature
+  Future<void> cacheAssignedVehicleForToday({
+    required String vehicleId,
+    required String vehicleName,
+    required String plateNumber,
+  }) async {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final key = '$_assignedVehicleKey$today';
+
+      await _prefs.setString(
+        key,
+        jsonEncode({
+          'vehicleId': vehicleId,
+          'vehicleName': vehicleName,
+          'plateNumber': plateNumber,
+          'cachedDate': today,
+          'cachedAt': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+        }),
+      );
+
+      debugPrint(
+        '✅ Cached assigned vehicle for today: $vehicleName ($plateNumber)',
+      );
+    } catch (e) {
+      debugPrint('Error caching assigned vehicle for today: $e');
+    }
+  }
+
+  /// Get assigned vehicle for today (returns null if no vehicle or cache expired)
+  /// Automatically validates that cached vehicle is from today
+  Future<Map<String, dynamic>?> getTodayAssignedVehicle() async {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final key = '$_assignedVehicleKey$today';
+
+      final vehicleStr = _prefs.getString(key);
+      if (vehicleStr != null && vehicleStr.isNotEmpty) {
+        final vehicleData = jsonDecode(vehicleStr) as Map<String, dynamic>;
+
+        // Verify the cached vehicle is from today
+        final cachedDate = vehicleData['cachedDate'] as String?;
+        if (cachedDate == today) {
+          debugPrint(
+            '✅ Using cached assigned vehicle for today: ${vehicleData['vehicleName']}',
+          );
+          return vehicleData;
+        } else {
+          // Cache is from a different day, expired
+          debugPrint(
+            '⏰ Assigned vehicle cache expired (cached on $cachedDate, need $today)',
+          );
+          await _prefs.remove(key);
+          return null;
+        }
+      }
+
+      debugPrint('No assigned vehicle cached for today');
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving today\'s assigned vehicle: $e');
+      return null;
+    }
+  }
+
+  /// Get last used vehicle (without date restriction)
+  /// Useful fallback when no assigned vehicle for today
+  Map<String, dynamic>? getLastUsedVehicle() {
+    try {
+      // Return normal vehicle selection (not date-restricted)
+      return getCachedVehicleSelection();
+    } catch (e) {
+      debugPrint('Error retrieving last used vehicle: $e');
+      return null;
+    }
+  }
+
+  /// Get vehicle for offline mode - prefers assigned vehicle, falls back to last used
+  /// This is the main method to call during offline mode
+  Future<Map<String, dynamic>?> getVehicleForOfflineMode() async {
+    try {
+      // First, try to get today's assigned vehicle
+      final assignedVehicle = await getTodayAssignedVehicle();
+      if (assignedVehicle != null) {
+        debugPrint('📱 Using assigned vehicle for offline mode');
+        return assignedVehicle;
+      }
+
+      // Fallback: get last used vehicle
+      final lastUsed = getLastUsedVehicle();
+      if (lastUsed != null) {
+        debugPrint('📱 Using last used vehicle for offline mode');
+        return lastUsed;
+      }
+
+      debugPrint('⚠️ No vehicle available for offline mode');
+      return null;
+    } catch (e) {
+      debugPrint('Error getting vehicle for offline mode: $e');
+      return null;
+    }
+  }
+
+  /// Clear expired vehicle caches (call during cleanup/logout)
+  Future<void> clearExpiredVehicleCaches() async {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      // Get all SharedPreferences keys
+      final allKeys = _prefs.getKeys();
+      int cleared = 0;
+
+      for (final key in allKeys) {
+        if (key.startsWith(_assignedVehicleKey) &&
+            key != '$_assignedVehicleKey$today') {
+          await _prefs.remove(key);
+          cleared++;
+        }
+      }
+
+      if (cleared > 0) {
+        debugPrint('🧹 Cleared $cleared expired vehicle caches');
+      }
+    } catch (e) {
+      debugPrint('Error clearing expired vehicle caches: $e');
+    }
+  }
+
+  // ============================================================================
+  // PTI STATUS CACHING - DATE-BASED FOR "COMPLETED TODAY"
+  // ============================================================================
+
+  static const String _ptiCompletedKey = 'pti_completed_today_';
+
+  /// Cache PTI completion status for today
+  /// Call this after user completes PTI inspection
+  Future<void> cachePTICompletedForToday({
+    required String vehicleId,
+    required String inspectionData,
+  }) async {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final key = '$_ptiCompletedKey$today';
+
+      await _prefs.setString(
+        key,
+        jsonEncode({
+          'vehicleId': vehicleId,
+          'inspectionData': inspectionData,
+          'completedDate': today,
+          'completedAt': DateFormat(
+            'yyyy-MM-dd HH:mm:ss',
+          ).format(DateTime.now()),
+        }),
+      );
+
+      debugPrint('✅ Cached PTI completion for today (Vehicle: $vehicleId)');
+    } catch (e) {
+      debugPrint('Error caching PTI completion: $e');
+    }
+  }
+
+  /// Check if PTI is already completed for today
+  /// Returns true only if PTI was completed today, false if expired or not done
+  /// Use this before loading PTI items when offline
+  Future<bool> isPTICompletedForToday({required String vehicleId}) async {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final key = '$_ptiCompletedKey$today';
+
+      final ptiDataStr = _prefs.getString(key);
+      if (ptiDataStr != null && ptiDataStr.isNotEmpty) {
+        final ptiData = jsonDecode(ptiDataStr) as Map<String, dynamic>;
+
+        // Verify the cached PTI is from today and for this vehicle
+        final completedDate = ptiData['completedDate'] as String?;
+        final cachedVehicleId = ptiData['vehicleId'] as String?;
+
+        if (completedDate == today && cachedVehicleId == vehicleId) {
+          debugPrint('✅ PTI already completed for today (Vehicle: $vehicleId)');
+          return true;
+        } else if (completedDate != today) {
+          // Expired from previous day
+          debugPrint(
+            '⏰ PTI completion expired (completed on $completedDate, need $today)',
+          );
+          await _prefs.remove(key);
+          return false;
+        } else {
+          // Different vehicle
+          debugPrint(
+            '⚠️ PTI cached for different vehicle (cached: $cachedVehicleId, current: $vehicleId)',
+          );
+          return false;
+        }
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('Error checking PTI completion: $e');
+      return false;
+    }
+  }
+
+  /// Get cached PTI completion data for today
+  /// Returns null if not completed or cache expired
+  Map<String, dynamic>? getPTICompletedData({required String vehicleId}) {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final key = '$_ptiCompletedKey$today';
+
+      final ptiDataStr = _prefs.getString(key);
+      if (ptiDataStr != null && ptiDataStr.isNotEmpty) {
+        final ptiData = jsonDecode(ptiDataStr) as Map<String, dynamic>;
+        final completedDate = ptiData['completedDate'] as String?;
+        final cachedVehicleId = ptiData['vehicleId'] as String?;
+
+        if (completedDate == today && cachedVehicleId == vehicleId) {
+          debugPrint('✅ Retrieved cached PTI data for today');
+          return ptiData;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving PTI data: $e');
+      return null;
+    }
+  }
+
+  /// Clear all PTI caches (called on logout)
+  /// This is important to reset when user logs out and logs back in next day
+  Future<void> clearPTICaches() async {
+    try {
+      final allKeys = _prefs.getKeys();
+
+      for (final key in allKeys) {
+        if (key.startsWith(_ptiCompletedKey)) {
+          await _prefs.remove(key);
+        }
+      }
+
+      debugPrint('🧹 Cleared all PTI completion caches');
+    } catch (e) {
+      debugPrint('Error clearing PTI caches: $e');
     }
   }
 }

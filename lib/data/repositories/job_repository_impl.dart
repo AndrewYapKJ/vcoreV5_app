@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import 'package:vcore_v5_app/data/datasources/job_datasource.dart';
 import 'package:vcore_v5_app/domain/repositories/job_repository.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
@@ -215,25 +216,40 @@ class JobRepositoryImpl implements JobRepository {
   }) async {
     try {
       if (_connectivityService.isOnline) {
-        return await remoteDataSource.uploadJobImage(
+        final result = await remoteDataSource.uploadJobImage(
           jobNo: jobNo,
           filePath: filePath,
           fileName: fileName,
         );
+
+        // Check if result is actually an error due to connectivity
+        if (result.isError) {
+          final error = result as ErrorResult;
+          // If it's a connection error, queue it instead
+          if (error.error is DioException) {
+            final dioError = error.error as DioException;
+            if (dioError.type == DioExceptionType.connectionTimeout ||
+                dioError.type == DioExceptionType.receiveTimeout ||
+                dioError.type == DioExceptionType.connectionError ||
+                (dioError.message != null &&
+                    dioError.message!.contains('No internet'))) {
+              debugPrint(
+                '📋 Connection error detected - queueing image upload',
+              );
+              await _queueImageUpload(jobNo, filePath, fileName);
+              return ApiResult.offline({
+                'result': true,
+                'fileName': fileName,
+                'queued': true,
+              }, message: 'Image upload queued - will sync when online');
+            }
+          }
+        }
+
+        return result;
       } else {
         // Queue image upload for later sync
-        await offlineQueueDataSource.queueRequest(
-          method: 'POST',
-          url: '/app/ReceiveFile.ashx?id=$jobNo',
-          operationId: 'upload_image_${jobNo}_$fileName',
-          data: {'filePath': filePath, 'fileName': fileName, 'jobNo': jobNo},
-          optimisticData: {
-            'result': true,
-            'message': 'Image upload queued - will sync when online',
-            'fileName': fileName,
-            'queued': true,
-          },
-        );
+        await _queueImageUpload(jobNo, filePath, fileName);
 
         return ApiResult.offline({
           'result': true,
@@ -243,11 +259,56 @@ class JobRepositoryImpl implements JobRepository {
         }, message: 'Image will be uploaded when online');
       }
     } catch (e) {
+      debugPrint('Exception in uploadJobImage: $e');
+
+      // Check if it's a connection error
+      if (e is DioException) {
+        final dioError = e as DioException;
+        if (dioError.type == DioExceptionType.connectionTimeout ||
+            dioError.type == DioExceptionType.receiveTimeout ||
+            dioError.type == DioExceptionType.connectionError ||
+            (dioError.message != null &&
+                dioError.message!.contains('No internet'))) {
+          debugPrint('📋 Caught connection exception - queueing image upload');
+          await _queueImageUpload(jobNo, filePath, fileName);
+          return ApiResult.offline({
+            'result': true,
+            'fileName': fileName,
+            'queued': true,
+          }, message: 'Image upload queued - will sync when online');
+        }
+      }
+
       debugPrint('Error uploading image: $e');
       return ApiResult.error(
         'Failed to upload image: ${e.toString()}',
         error: e,
       );
+    }
+  }
+
+  /// Helper method to queue an image upload
+  Future<void> _queueImageUpload(
+    String jobNo,
+    String filePath,
+    String fileName,
+  ) async {
+    try {
+      await offlineQueueDataSource.queueRequest(
+        method: 'POST',
+        url: '/app/ReceiveFile.ashx?id=$jobNo',
+        operationId: 'upload_image_${jobNo}_$fileName',
+        data: {'filePath': filePath, 'fileName': fileName, 'jobNo': jobNo},
+        optimisticData: {
+          'result': true,
+          'message': 'Image upload queued - will sync when online',
+          'fileName': fileName,
+          'queued': true,
+        },
+      );
+      debugPrint('✅ Image queued successfully: $fileName');
+    } catch (e) {
+      debugPrint('❌ Error queueing image: $e');
     }
   }
 
@@ -266,7 +327,7 @@ class JobRepositoryImpl implements JobRepository {
   }) async {
     try {
       if (_connectivityService.isOnline) {
-        return await remoteDataSource.updateJobDetails(
+        final result = await remoteDataSource.updateJobDetails(
           jobNo: jobNo,
           trailerID: trailerID,
           trailerNo: trailerNo,
@@ -278,31 +339,55 @@ class JobRepositoryImpl implements JobRepository {
           dropQty: dropQty,
           tenantId: tenantId,
         );
+
+        // Check if result is actually an error due to connectivity
+        if (result.isError) {
+          final error = result as ErrorResult;
+          // If it's a connection error, queue it instead
+          if (error.error is DioException) {
+            final dioError = error.error as DioException;
+            if (dioError.type == DioExceptionType.connectionTimeout ||
+                dioError.type == DioExceptionType.receiveTimeout ||
+                dioError.type == DioExceptionType.connectionError ||
+                (dioError.message != null &&
+                    dioError.message!.contains('No internet'))) {
+              debugPrint(
+                '📋 Connection error detected - queueing job details update',
+              );
+              await _queueJobDetailsUpdate(
+                jobNo,
+                trailerID,
+                trailerNo,
+                containerNo,
+                sealNo,
+                remarks,
+                siteType,
+                pickQty,
+                dropQty,
+                tenantId,
+              );
+              return ApiResult.offline({
+                'result': true,
+                'queued': true,
+              }, message: 'Job details update queued - will sync when online');
+            }
+          }
+        }
+
+        return result;
       } else {
         // Queue for later sync
-        await offlineQueueDataSource.queueRequest(
-          method: 'POST',
-          url: '/UpdateJobDetails',
-          operationId: 'update_job_details_$jobNo',
-          data: {
-            'formData': {
-              'jobNo': jobNo,
-              'trailerID': trailerID,
-              'trailerNo': trailerNo,
-              'containerNo': containerNo,
-              'SealNo': sealNo,
-              'remarks': remarks,
-              'siteType': siteType,
-              'pickQty': pickQty,
-              'dropQty': dropQty,
-              'TenantId': tenantId,
-            },
-          },
-          optimisticData: {
-            'result': true,
-            'message': 'Job details queued for sync',
-            'queued': true,
-          },
+        await _queueJobDetailsUpdate(
+          jobNo,
+          trailerID,
+          trailerNo,
+          containerNo,
+          sealNo,
+          remarks,
+          siteType,
+          pickQty,
+          dropQty,
+          tenantId,
         );
 
         return ApiResult.offline({
@@ -312,11 +397,87 @@ class JobRepositoryImpl implements JobRepository {
         }, message: 'Details will be updated when online');
       }
     } catch (e) {
+      debugPrint('Exception in updateJobDetails: $e');
+
+      // Check if it's a connection error
+      if (e is DioException) {
+        final dioError = e as DioException;
+        if (dioError.type == DioExceptionType.connectionTimeout ||
+            dioError.type == DioExceptionType.receiveTimeout ||
+            dioError.type == DioExceptionType.connectionError ||
+            (dioError.message != null &&
+                dioError.message!.contains('No internet'))) {
+          debugPrint(
+            '📋 Caught connection exception - queueing job details update',
+          );
+          await _queueJobDetailsUpdate(
+            jobNo,
+            trailerID,
+            trailerNo,
+            containerNo,
+            sealNo,
+            remarks,
+            siteType,
+            pickQty,
+            dropQty,
+            tenantId,
+          );
+          return ApiResult.offline({
+            'result': true,
+            'queued': true,
+          }, message: 'Job details update queued - will sync when online');
+        }
+      }
+
       debugPrint('Error updating job details: $e');
       return ApiResult.error(
         'Failed to update job details: ${e.toString()}',
         error: e,
       );
+    }
+  }
+
+  /// Helper method to queue job details update
+  Future<void> _queueJobDetailsUpdate(
+    String jobNo,
+    String trailerID,
+    String trailerNo,
+    String containerNo,
+    String sealNo,
+    String remarks,
+    String siteType,
+    String pickQty,
+    String dropQty,
+    String tenantId,
+  ) async {
+    try {
+      await offlineQueueDataSource.queueRequest(
+        method: 'POST',
+        url: '/UpdateJobDetails',
+        operationId: 'update_job_details_$jobNo',
+        data: {
+          'formData': {
+            'jobNo': jobNo,
+            'trailerID': trailerID,
+            'trailerNo': trailerNo,
+            'containerNo': containerNo,
+            'SealNo': sealNo,
+            'remarks': remarks,
+            'siteType': siteType,
+            'pickQty': pickQty,
+            'dropQty': dropQty,
+            'TenantId': tenantId,
+          },
+        },
+        optimisticData: {
+          'result': true,
+          'message': 'Job details queued for sync',
+          'queued': true,
+        },
+      );
+      debugPrint('✅ Job details queued successfully: $jobNo');
+    } catch (e) {
+      debugPrint('❌ Error queueing job details update: $e');
     }
   }
 

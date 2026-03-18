@@ -25,6 +25,8 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
   String? defaultVehicleId;
   late Future<List<Vehicle>> _vehiclesFuture;
   bool _isLoadingDefaults = true;
+  bool _isOfflineMode = false; // Track if using cached vehicles
+  List<Vehicle> _cachedVehicles = []; // Store cached vehicles for fallback
   final VehicleService _vehicleService = VehicleService();
   final LoginCacheService _cacheService = LoginCacheService();
 
@@ -40,11 +42,8 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
     final tenantId = ref.read(tenantIdProvider);
 
     if (driverId != null && tenantId != null) {
-      // Initialize the future immediately (don't wait)
-      _vehiclesFuture = _vehicleService.getVehicles(
-        driverId: driverId,
-        tenantId: tenantId,
-      );
+      // Initialize the future with error handling
+      _vehiclesFuture = _getVehiclesWithFallback(driverId, tenantId);
 
       // Load defaults in background
       _loadDefaults(driverId, tenantId);
@@ -53,6 +52,69 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
         _vehiclesFuture = Future.error('Driver ID or Tenant ID not found');
         _isLoadingDefaults = false;
       });
+    }
+  }
+
+  /// Get vehicles from API with graceful fallback to cached vehicles
+  Future<List<Vehicle>> _getVehiclesWithFallback(
+    String driverId,
+    String tenantId,
+  ) async {
+    try {
+      // Attempt to fetch from API
+      final vehicles = await _vehicleService.getVehicles(
+        driverId: driverId,
+        tenantId: tenantId,
+      );
+
+      if (vehicles.isNotEmpty) {
+        // Success! Cache these for offline use
+        _cachedVehicles = vehicles;
+        setState(() {
+          _isOfflineMode = false;
+        });
+        debugPrint('✅ Loaded ${vehicles.length} vehicles from API');
+        return vehicles;
+      } else {
+        throw Exception('No vehicles returned from API');
+      }
+    } catch (e) {
+      debugPrint('❌ API error loading vehicles: $e');
+
+      // Fallback: Load from cache
+      debugPrint('📱 Falling back to cached vehicles...');
+      try {
+        // Try to get vehicles from OfflineStorageService or reconstruct from cache
+        final cachedVehicleData = _cacheService.getCachedVehicleSelection();
+
+        if (cachedVehicleData != null) {
+          // We have at least one cached vehicle
+          final vehicle = Vehicle(
+            id: cachedVehicleData['vehicleId'] as String? ?? 'unknown',
+            plateNumber:
+                cachedVehicleData['vehicleName'] as String? ?? 'Unknown',
+            status: 'Cached',
+            mdtuid: '0',
+          );
+
+          _cachedVehicles = [vehicle];
+          setState(() {
+            _isOfflineMode = true;
+          });
+
+          debugPrint(
+            '✅ Using cached vehicle: ${vehicle.plateNumber} (ID: ${vehicle.id})',
+          );
+          return _cachedVehicles;
+        } else {
+          throw Exception('No cached vehicles available');
+        }
+      } catch (cacheError) {
+        debugPrint('❌ Cache fallback failed: $cacheError');
+        throw Exception(
+          'Failed to load vehicles: Network error and no cached data available',
+        );
+      }
     }
   }
 
@@ -132,6 +194,192 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
     });
 
     return filtered;
+  }
+
+  /// Build vehicle list UI with offline indicator
+  Widget _buildVehicleListWithOfflineIndicator(
+    ColorScheme colorScheme,
+    List<Vehicle> filteredVehicles,
+  ) {
+    return Column(
+      children: [
+        // Offline indicator banner
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.15),
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.amber.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.cloud_off_rounded, size: 20.sp, color: Colors.amber),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Offline Mode',
+                      style: context.font
+                          .semibold(context)
+                          .copyWith(fontSize: 12.sp, color: Colors.amber),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      'Using cached vehicle. Check connection to refresh.',
+                      style: context.font
+                          .regular(context)
+                          .copyWith(
+                            fontSize: 10.sp,
+                            color: Colors.amber.withValues(alpha: 0.7),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Vehicle list
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.only(top: 12.h),
+            itemCount: filteredVehicles.length,
+            itemBuilder: (context, index) {
+              final vehicle = filteredVehicles[index];
+              final isSelected = selectedVehicle == vehicle.id;
+
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedVehicle = vehicle.id;
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.outlineVariant,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      color: isSelected
+                          ? colorScheme.primary.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                    ),
+                    padding: EdgeInsets.all(16.w),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48.w,
+                          height: 48.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary.withValues(alpha: 0.2),
+                                colorScheme.secondary.withValues(alpha: 0.1),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.directions_car_rounded,
+                            color: colorScheme.primary,
+                            size: 24.sp,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                vehicle.plateNumber,
+                                style: context.font
+                                    .semibold(context)
+                                    .copyWith(
+                                      fontSize: 14.sp,
+                                      color: colorScheme.onSurface,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: colorScheme.primary,
+                            size: 24.sp,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Proceed button
+        Padding(
+          padding: EdgeInsets.all(16.w),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52.h,
+            child: ElevatedButton(
+              onPressed: selectedVehicle != null
+                  ? () async {
+                      // Find selected vehicle data
+                      final selected = _cachedVehicles.firstWhere(
+                        (v) => v.id == selectedVehicle,
+                      );
+
+                      // Cache the selection
+                      await _vehicleService.cacheSelectedVehicle(
+                        vehicleId: selected.id,
+                        vehicleName: selected.plateNumber,
+                        plateNumber: selected.plateNumber,
+                      );
+
+                      if (mounted) {
+                        context.push(
+                          '/pti',
+                          extra: {
+                            'vehicleId': selected.id,
+                            'vehicleName': selected.plateNumber,
+                            'plateNumber': selected.plateNumber,
+                          },
+                        );
+                      }
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                disabledBackgroundColor: colorScheme.primary.withValues(
+                  alpha: 0.5,
+                ),
+                foregroundColor: colorScheme.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Continue with Cached Vehicle',
+                style: context.font.semibold(context).copyWith(fontSize: 14.sp),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -263,6 +511,22 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
             }
 
             if (snapshot.hasError) {
+              // Check if we have cached vehicles to show as fallback
+              if (_cachedVehicles.isNotEmpty && _isOfflineMode) {
+                // Show UI with cached vehicles and offline indicator
+                debugPrint('📱 Showing cached vehicles in offline mode');
+                final vehicles = _cachedVehicles;
+                final filteredVehicles = _getSortedAndFilteredVehicles(
+                  vehicles,
+                );
+
+                return _buildVehicleListWithOfflineIndicator(
+                  colorScheme,
+                  filteredVehicles,
+                );
+              }
+
+              // No cached vehicles available - show error with retry
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -297,15 +561,20 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                           ),
                     ),
                     SizedBox(height: 8.h),
-                    Text(
-                      snapshot.error.toString(),
-                      textAlign: TextAlign.center,
-                      style: context.font
-                          .regular(context)
-                          .copyWith(
-                            fontSize: 12.sp,
-                            color: colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Text(
+                        'No internet connection and no cached vehicles available. Please check your connection and try again.',
+                        textAlign: TextAlign.center,
+                        style: context.font
+                            .regular(context)
+                            .copyWith(
+                              fontSize: 12.sp,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
+                      ),
                     ),
                     SizedBox(height: 20.h),
                     ElevatedButton(

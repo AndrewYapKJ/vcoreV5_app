@@ -7,6 +7,9 @@ import 'package:vcore_v5_app/data/datasources/job_remote_datasource_impl.dart';
 import 'package:vcore_v5_app/data/datasources/offline_queue_datasource_impl.dart';
 import 'package:vcore_v5_app/data/repositories/job_repository_impl.dart';
 import 'package:vcore_v5_app/domain/repositories/job_repository.dart';
+import 'package:vcore_v5_app/domain/repositories/pti_repository.dart';
+import 'package:vcore_v5_app/domain/repositories/vehicle_repository.dart';
+import 'package:vcore_v5_app/domain/repositories/payment_repository.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
@@ -14,6 +17,9 @@ import 'package:vcore_v5_app/services/offline/offline_storage_service.dart';
 import 'package:vcore_v5_app/ui/job/states/job_states.dart';
 import 'package:vcore_v5_app/ui/job/viewmodels/job_details_viewmodel.dart';
 import 'package:vcore_v5_app/ui/job/viewmodels/job_list_viewmodel.dart';
+import 'package:vcore_v5_app/ui/pti/viewmodels/pti_viewmodel.dart';
+import 'package:vcore_v5_app/ui/vehicle/viewmodels/vehicle_viewmodel.dart';
+import 'package:vcore_v5_app/ui/payment/viewmodels/payment_viewmodel.dart';
 
 part 'repository_providers.g.dart';
 
@@ -116,4 +122,28 @@ JobDetailsViewModel jobDetailsViewModel(Ref ref, Job job) {
   });
 
   return viewModel;
+}
+
+/// PTI ViewModel provider
+@riverpod
+PTIViewModel ptiViewModel(Ref ref) {
+  final connectivityService = ref.watch(connectivityServiceProvider);
+  // TODO: Create PTI Repository implementation and add here
+  throw UnimplementedError('PTI Repository not yet implemented');
+}
+
+/// Vehicle ViewModel provider
+@riverpod
+VehicleViewModel vehicleViewModel(Ref ref) {
+  final connectivityService = ref.watch(connectivityServiceProvider);
+  // TODO: Create Vehicle Repository implementation and add here
+  throw UnimplementedError('Vehicle Repository not yet implemented');
+}
+
+/// Payment ViewModel provider
+@riverpod
+PaymentViewModel paymentViewModel(Ref ref) {
+  final connectivityService = ref.watch(connectivityServiceProvider);
+  // TODO: Create Payment Repository implementation and add here
+  throw UnimplementedError('Payment Repository not yet implemented');
 }

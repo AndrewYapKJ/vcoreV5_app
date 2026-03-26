@@ -14,7 +14,7 @@ class RequestJobResponse {
   factory RequestJobResponse.fromJson(Map<String, dynamic> json) {
     return RequestJobResponse(
       success: json['d'] != null,
-      message: json['message'],
+      message: json['d'] != null ? json['d']['Error'] : null,
       jobId: json['jobId'],
     );
   }
@@ -144,7 +144,8 @@ class JobsApi {
           if (data['d'] == null) {
             throw Exception('Invalid response format: missing d property');
           }
-          return RequestJobResponse.fromJson(data['d']);
+
+          return RequestJobResponse.fromJson(data);
         },
       );
 

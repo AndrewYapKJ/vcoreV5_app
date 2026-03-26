@@ -144,7 +144,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       data: (theme) {
         final scheme = AppColorScheme.getSchemeByIndex(theme.schemeIndex);
         return MaterialApp.router(
-          title: 'VCORE Driver App',
+          title: 'vCore Driver App',
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,
           locale: context.locale,

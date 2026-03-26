@@ -639,7 +639,7 @@ class _JobListViewState extends ConsumerState<JobListView>
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       constraints: BoxConstraints(
-        maxHeight: 300.h,
+        maxHeight: 306.h,
       ), // Increased height to accommodate action buttons
       child: Stack(
         children: [

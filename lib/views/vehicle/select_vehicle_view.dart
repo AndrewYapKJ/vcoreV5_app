@@ -1041,7 +1041,7 @@ class _SelectVehicleViewState extends ConsumerState<SelectVehicleView> {
                                           // Vehicle info
                                           Expanded(
                                             child: Text(
-                                              "${vehicle.id} - ${vehicle.plateNumber}",
+                                              vehicle.plateNumber,
                                               style: context.font
                                                   .semibold(context)
                                                   .copyWith(

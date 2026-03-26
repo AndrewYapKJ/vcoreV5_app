@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_scale_kit/flutter_scale_kit.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:vcore_v5_app/constant/font_styling.dart';
 
 class IncentiveReportView extends StatefulWidget {
@@ -230,109 +229,7 @@ class _IncentiveReportViewState extends State<IncentiveReportView>
     );
   }
 
-  Widget _buildDriverInfoCard(BuildContext context, ColorScheme colorScheme) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(12.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.1),
-            colorScheme.primary.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44.h,
-            height: 44.h,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.person_rounded, color: colorScheme.primary),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'dummy toko',
-                  style: context.font
-                      .semibold(context)
-                      .copyWith(fontSize: 13.sp, color: colorScheme.onSurface),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  'Driver ID: DRV001',
-                  style: context.font
-                      .regular(context)
-                      .copyWith(
-                        fontSize: 10.sp,
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStatCard(
-    BuildContext context,
-    ColorScheme colorScheme,
-    String label,
-    String amount,
-    IconData icon,
-    Color accentColor,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(12.h),
-      decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withValues(alpha: 0.2), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: context.font
-                    .regular(context)
-                    .copyWith(
-                      fontSize: 11.sp,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-              ),
-              Icon(icon, size: 16.h, color: accentColor),
-            ],
-          ),
-          SizedBox(height: 6.h),
-          Text(
-            amount,
-            style: context.font
-                .semibold(context)
-                .copyWith(fontSize: 13.sp, color: accentColor),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildIncentiveRow(
     BuildContext context,
@@ -405,66 +302,4 @@ class _IncentiveReportViewState extends State<IncentiveReportView>
     );
   }
 
-  Widget _buildPerformanceStatus(
-    BuildContext context,
-    ColorScheme colorScheme,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(12.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.green.withValues(alpha: 0.1),
-            Colors.green.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.green.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32.h,
-            height: 32.h,
-            decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.check_circle_outline,
-              size: 16.h,
-              color: Colors.green,
-            ),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Performance Status',
-                  style: context.font
-                      .regular(context)
-                      .copyWith(fontSize: 12.sp, color: colorScheme.onSurface),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  'On track for this month',
-                  style: context.font
-                      .regular(context)
-                      .copyWith(fontSize: 10.sp, color: Colors.green.shade700),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

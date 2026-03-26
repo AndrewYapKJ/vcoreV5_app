@@ -49,10 +49,9 @@ class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
   Future<void> _loadCachedVehicle() async {
     final cachedVehicle = _cacheService.getCachedVehicleSelection();
     if (cachedVehicle != null && mounted) {
-      "${cachedVehicle['vehicleId']} - ${cachedVehicle['plateNumber']}";
       setState(() {
         selectedVehicle = cachedVehicle['plateNumber'] != null
-            ? "${cachedVehicle['vehicleId']} - ${cachedVehicle['plateNumber']}"
+            ? "${cachedVehicle['plateNumber']}"
             : '';
       });
     }

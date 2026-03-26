@@ -142,11 +142,10 @@ class _RequestViewState extends ConsumerState<RequestView> {
         delCol: selectedJobType == 'delivery' ? 'DEL' : 'COL',
         containerNo: containerNoController.text,
         containerSize: selectedSize!,
-        trailerId: selectedTrailer!,
+        trailerId: selectedTrailer ?? "",
         lat: 0.0,
         lon: 0.0,
       );
-
       if (mounted) {
         setState(() => isLoading = false);
 
@@ -154,7 +153,7 @@ class _RequestViewState extends ConsumerState<RequestView> {
           debugPrint('✅ Request job submitted successfully');
           CustomSnackBar.showSuccess(
             context,
-            message: 'request_submitted'.tr(),
+            message: response.message ?? 'request_submitted'.tr(),
           );
 
           // Clear form
@@ -175,7 +174,7 @@ class _RequestViewState extends ConsumerState<RequestView> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Error submitting request: $e');
+      debugPrint('❌ Error submitting request: ${e.toString()}');
       if (mounted) {
         setState(() => isLoading = false);
         CustomSnackBar.showError(context, message: 'Error: ${e.toString()}');
@@ -489,96 +488,13 @@ class _RequestViewState extends ConsumerState<RequestView> {
                       ),
                   ],
                 ),
-                SizedBox(height: 16.h),
 
-                // Vehicle Section - Enhanced with Custom Typeahead
-                _buildSectionLabel(
-                  context,
-                  'vehicle'.tr(),
-                  Icons.directions_bus,
-                ),
-                SizedBox(height: 4.h),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CustomTypeAheadField<Vehicle>(
-                      controller: vehicleController,
-                      hint: 'Search vehicle plate number',
-                      prefixIcon: Icons.directions_car_filled,
-                      suggestionsCallback: (pattern) async {
-                        await Future.delayed(const Duration(milliseconds: 100));
-                        print('🔍 Filtering vehicles with pattern: "$pattern"');
-                        print(
-                          "${(pattern).split('-')[0].toLowerCase()}",
-                        ); // Debug split pattern
-                        return _availableVehicles
-                            .where(
-                              (vehicle) =>
-                                  vehicle.plateNumber.toLowerCase().contains(
-                                    (pattern).toLowerCase(),
-                                  ) ||
-                                  vehicle.id.toLowerCase().contains(
-                                    (pattern).toLowerCase(),
-                                  ) ||
-                                  pattern.toLowerCase().contains(
-                                    (vehicle.plateNumber).toLowerCase(),
-                                  ),
-                            )
-                            .toList();
-                      },
-                      itemBuilder: (context, vehicle) {
-                        return Row(
-                          children: [
-                            Icon(
-                              Icons.directions_car,
-                              color: colorScheme.secondary,
-                              size: 18.h,
-                            ),
-                            SizedBox(width: 12.w),
-                            Text(
-                              "${vehicle.id} - ${vehicle.plateNumber}",
-                              style: context.font
-                                  .regular(context)
-                                  .copyWith(fontSize: 14.sp),
-                            ),
-                          ],
-                        );
-                      },
-                      onSuggestionSelected: (vehicle) {
-                        setState(() {
-                          selectedVehicle = vehicle.plateNumber;
-                          vehicleController.text =
-                              "${vehicle.id} - ${vehicle.plateNumber}";
-                          vehicleError = null;
-                        });
-                      },
-                      suggestionDisplay: (vehicle) =>
-                          "${vehicle.id} - ${vehicle.plateNumber}",
-                      colorScheme: colorScheme,
-                      context: context,
-                      maxSuggestions: 5,
-                    ),
-                    if (vehicleError != null)
-                      Padding(
-                        padding: EdgeInsets.only(top: 6.h, left: 4.w),
-                        child: Text(
-                          vehicleError!,
-                          style: context.font
-                              .regular(context)
-                              .copyWith(
-                                fontSize: 12.sp,
-                                color: colorScheme.error,
-                              ),
-                        ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: 36.h),
-
+                SizedBox(height: 36),
                 // Request Button - Enhanced
                 Container(
                   width: double.infinity,
                   height: 52.h,
+                  alignment: Alignment.bottomCenter,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -607,9 +523,9 @@ class _RequestViewState extends ConsumerState<RequestView> {
                               setState(() {
                                 jobTypeError = null;
                                 sizeError = null;
-                                containerError = null;
-                                trailerError = null;
-                                vehicleError = null;
+                                // containerError = null;
+                                // trailerError = null;
+                                // vehicleError = null;
                               });
 
                               if (selectedJobType == null) {
@@ -625,31 +541,29 @@ class _RequestViewState extends ConsumerState<RequestView> {
                                 );
                                 hasError = true;
                               }
-                              if (containerNoController.text.isEmpty) {
-                                setState(
-                                  () => containerError =
-                                      'Container number is required',
-                                );
-                                hasError = true;
-                              }
-                              if (selectedTrailer == null) {
-                                setState(
-                                  () => trailerError = 'Trailer is required',
-                                );
-                                hasError = true;
-                              }
-                              if (selectedVehicle == null) {
-                                setState(
-                                  () => vehicleError = 'Vehicle is required',
-                                );
-                                hasError = true;
-                              }
+                              // if (containerNoController.text.isEmpty) {
+                              //   setState(
+                              //     () => containerError =
+                              //         'Container number is required',
+                              //   );
+                              //   hasError = true;
+                              // }
+                              // if (selectedTrailer == null) {
+                              //   setState(
+                              //     () => trailerError = 'Trailer is required',
+                              //   );
+                              //   hasError = true;
+                              // }
+                              // if (selectedVehicle == null) {
+                              //   setState(
+                              //     () => vehicleError = 'Vehicle is required',
+                              //   );
+                              //   hasError = true;
+                              // }
 
                               if (!hasError) {
                                 if (selectedSize != null &&
-                                    selectedJobType != null &&
-                                    selectedTrailer != null &&
-                                    selectedVehicle != null) {
+                                    selectedJobType != null) {
                                   await _submitRequestJob();
                                 }
                               }
@@ -691,7 +605,7 @@ class _RequestViewState extends ConsumerState<RequestView> {
                   ),
                 ),
                 SizedBox(
-                  height: 36.h + MediaQuery.of(context).viewPadding.bottom,
+                  height: 50.h + MediaQuery.of(context).viewPadding.bottom,
                 ),
               ],
             ),

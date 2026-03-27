@@ -405,6 +405,35 @@ class OfflineStorageService {
         : date;
   }
 
+  /// Clean up offline queue box and free resources
+  static Future<void> cleanupOfflineQueue() async {
+    try {
+      // Get queue size before clearing
+      final queueSize = _offlineQueueBox?.length ?? 0;
+
+      if (queueSize > 0) {
+        debugPrint(
+          '🧹 Cleaning up offline queue with $queueSize pending requests',
+        );
+      } else {
+        debugPrint('✅ Offline queue is already empty');
+      }
+
+      // Clear all items from the queue
+      await _offlineQueueBox?.clear();
+
+      // Verify queue is empty
+      final remainingItems = _offlineQueueBox?.length ?? 0;
+      if (remainingItems == 0) {
+        debugPrint('✅ Offline queue cleaned successfully (0 items remaining)');
+      } else {
+        debugPrint('⚠️ Warning: Offline queue still has $remainingItems items');
+      }
+    } catch (e) {
+      debugPrint('❌ Error cleaning up offline queue: $e');
+    }
+  }
+
   static Future<void> clearAllDataOnLogout() async {
     try {
       // Determine whether the user chose to be remembered. If so, preserve
@@ -428,17 +457,17 @@ class OfflineStorageService {
       }
 
       await _cacheBox?.clear();
-      debugPrint('Cleared API response cache');
+      debugPrint('✅ Cleared API response cache');
 
-      await _offlineQueueBox?.clear();
-      debugPrint('Cleared offline queue');
+      // Clean offline queue properly
+      await cleanupOfflineQueue();
 
       await _userDataBox?.clear();
-      debugPrint('Cleared user data');
+      debugPrint('✅ Cleared user data');
 
       // Clear all app data, then restore preserved keys if required.
       await _appDataBox?.clear();
-      debugPrint('Cleared app data');
+      debugPrint('✅ Cleared app data');
 
       if (shouldRemember) {
         if (preservedAccessToken != null) {
@@ -456,13 +485,13 @@ class OfflineStorageService {
       }
 
       debugPrint(
-        'Successfully cleared all cached data on logout' +
+        '✅ Successfully cleared all cached data on logout' +
             (shouldRemember
                 ? ' (preserved credentials due to remember-me)'
                 : ''),
       );
     } catch (e) {
-      debugPrint('Error clearing all data on logout: $e');
+      debugPrint('❌ Error clearing all data on logout: $e');
     }
   }
 

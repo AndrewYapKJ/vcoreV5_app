@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcore_v5_app/constant/font_styling.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
+import 'package:vcore_v5_app/services/offline/offline_queue_manager.dart';
+import 'package:vcore_v5_app/controllers/login_controller.dart';
 
 class MainShellScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -364,10 +366,7 @@ class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
                 width: double.infinity,
                 height: 40.h,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    context.go('/login');
-                  },
+                  onPressed: () => _showLogoutConfirmDialog(context, ref),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.withValues(alpha: 0.1),
                     foregroundColor: Colors.red,
@@ -390,6 +389,156 @@ class _MainShellScaffoldState extends ConsumerState<MainShellScaffold> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showLogoutConfirmDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final queueManager = OfflineQueueManager();
+    final queuedCount = queueManager.getQueuedRequestsCount();
+    final hasQueue = queuedCount > 0;
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return AlertDialog(
+          backgroundColor: colorScheme.surfaceContainerHigh,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                hasQueue ? Icons.warning_rounded : Icons.logout_rounded,
+                color: hasQueue ? Colors.orange : colorScheme.primary,
+                size: 28,
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text(
+                  'logout'.tr(),
+                  style: context.font
+                      .bold(context)
+                      .copyWith(fontSize: 18.sp, color: colorScheme.onSurface),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to logout?',
+                  style: context.font
+                      .regular(context)
+                      .copyWith(
+                        fontSize: 14.sp,
+                        color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                ),
+                if (hasQueue) ...[
+                  SizedBox(height: 16.h),
+                  Container(
+                    padding: EdgeInsets.all(12.h),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Unsync Data Warning',
+                              style: context.font
+                                  .semibold(context)
+                                  .copyWith(
+                                    fontSize: 12.sp,
+                                    color: Colors.orange,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'You have $queuedCount offline request${queuedCount > 1 ? 's' : ''} pending. '
+                          'If you logout now, these requests will NOT be synced to the server and will be permanently lost.',
+                          style: context.font
+                              .regular(context)
+                              .copyWith(
+                                fontSize: 12.sp,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
+                                height: 1.4,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
+              child: Text(
+                'no_button'.tr(),
+                style: context.font.semibold(context).copyWith(fontSize: 12.sp),
+              ),
+            ),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  // Call controller logout to clear queue and all data
+                  await ref.read(loginControllerProvider.notifier).logout();
+                } catch (e) {
+                  // Handle case where ref becomes invalid during logout
+                  debugPrint('⚠️ Error during logout: $e');
+                }
+                // Close dialog and drawer
+                if (mounted && dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  Navigator.pop(context);
+                  // Navigate to login
+                  context.go('/login');
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                'yes_button'.tr(),
+                style: context.font
+                    .semibold(context)
+                    .copyWith(fontSize: 12.sp, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

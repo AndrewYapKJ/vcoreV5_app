@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../services/auth_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/storage/login_cache_service.dart';
+import '../services/offline/offline_storage_service.dart';
 import '../models/user_model.dart';
 import '../providers/user_provider.dart';
 import '../services/api/jobs_api.dart';
@@ -151,12 +152,18 @@ class LoginController extends _$LoginController {
   }
 
   Future<void> logout() async {
+    // Clear offline queue and all cached data
+    await OfflineStorageService.clearAllDataOnLogout();
     // Clear cached login data
     await _loginCacheService.clearCache();
     // Clear all user data from local storage
     await _storage.clearAllUserData();
-    // Clear user from provider
-    ref.read(userDataProvider.notifier).state = null;
+    // Clear user from provider (only if ref is still mounted)
+    if (ref.mounted) {
+      ref.read(userDataProvider.notifier).state = null;
+    } else {
+      debugPrint('⚠️ Ref already disposed, skipping userDataProvider update');
+    }
     // Reset state
     state = LoginState.initial();
   }

@@ -456,7 +456,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             ),
           ),
           content: Text(
-            'Upload ${images.length} image(s) for job $activeJobNo?',
+            'Upload ${images.length} image(s) for job ${widget.job.id}?',
             style: GoogleFonts.inter(fontSize: 14.sp),
           ),
           actions: [

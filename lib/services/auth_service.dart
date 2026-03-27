@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'api/auth_api.dart';
 import 'storage/login_cache_service.dart';
+import 'offline/offline_storage_service.dart';
 import '../models/login_response_model.dart';
 import 'package:flutter/foundation.dart';
 
@@ -95,6 +96,9 @@ class AuthService {
 
   /// Logout - clear all cached data
   Future<void> logout() async {
+    // Clear offline queue and all cached data
+    await OfflineStorageService.clearAllDataOnLogout();
+    // Clear login cache
     await _cacheService.clearCache();
   }
 }

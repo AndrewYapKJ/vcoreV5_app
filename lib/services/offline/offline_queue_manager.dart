@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -171,7 +172,7 @@ class OfflineQueueManager {
           if (url.contains('ReceiveFile.ashx') &&
               data is Map &&
               data.containsKey('base64Data')) {
-            // Handle image upload with FormData
+            // New format: Handle image upload with base64-encoded data
             final base64Data = data['base64Data'] as String;
             final filename = data['filename'] as String;
 
@@ -180,9 +181,9 @@ class OfflineQueueManager {
             // Convert base64 back to bytes
             final imageBytes = base64Decode(base64Data);
 
-            // Create FormData for file upload
+            // Create FormData for file upload (use 'files' to match online upload field name)
             final formData = FormData.fromMap({
-              'file': MultipartFile.fromBytes(
+              'files': MultipartFile.fromBytes(
                 imageBytes,
                 filename: filename,
                 contentType: DioMediaType('image', 'jpeg'),
@@ -201,15 +202,50 @@ class OfflineQueueManager {
             );
           } else if (url.contains('ReceiveFile.ashx') &&
               data is Map &&
-              data.containsKey('imagePath')) {
-            // Legacy format - log warning and skip
+              (data.containsKey('filePath') || data.containsKey('imagePath'))) {
+            // Legacy format: Handle old offline requests with file paths
+            final filePath = (data['filePath'] ?? data['imagePath']) as String;
+            final filename = data['fileName'] ?? data['filename'] as String;
+
             debugPrint(
-              'WARNING: Found legacy imagePath format in queue - skipping invalid request',
+              'Processing legacy image upload format: $filename from $filePath',
             );
-            debugPrint('Legacy data: $data');
-            throw Exception(
-              'Legacy image upload format detected - request skipped',
-            );
+
+            try {
+              // Read the file from disk
+              final file = File(filePath);
+              if (!await file.exists()) {
+                debugPrint(
+                  '⚠️ Legacy image file not found at: $filePath - skipping',
+                );
+                throw Exception('File not found: $filePath');
+              }
+
+              final imageBytes = await file.readAsBytes();
+
+              // Create FormData for file upload
+              final formData = FormData.fromMap({
+                'files': MultipartFile.fromBytes(
+                  imageBytes,
+                  filename: filename,
+                  contentType: DioMediaType('image', 'jpeg'),
+                ),
+              });
+
+              debugPrint(
+                'Processing legacy image upload: $filename (${imageBytes.length} bytes)',
+              );
+
+              response = await dio.post(
+                url,
+                data: formData,
+                queryParameters: queryParameters,
+                options: options.copyWith(contentType: 'multipart/form-data'),
+              );
+            } catch (e) {
+              debugPrint('❌ Error processing legacy image upload: $e');
+              throw Exception('Failed to process legacy image upload: $e');
+            }
           } else {
             // Regular POST request
             response = await dio.post(

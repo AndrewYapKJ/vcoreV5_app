@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:vcore_v5_app/services/api_services/api_service.dart';
@@ -243,12 +246,16 @@ class JobApi {
         enableOfflineQueue: true,
         fromJson: (data) {
           // Handle offline optimistic data format
+
           if (data.containsKey('jobId') && data.containsKey('status')) {
+            print("2222");
             return {'result': true, 'error': null};
           }
           if (data['d'] == null) {
+            print("33333");
             throw Exception('Invalid response format: missing d property');
           }
+          print("11111");
           final responseData = data['d'] as Map<String, dynamic>;
           return {
             'result': responseData['Result'] ?? false,
@@ -257,14 +264,17 @@ class JobApi {
         },
       );
 
+      print("44444");
       if (result.isSuccess) {
         debugPrint('✅ UpdateJob Success');
         return result.data ?? {'result': false, 'error': 'No response data'};
       } else if (result.isOffline) {
+        print("55555");
         // Request was queued offline
         debugPrint('📋 UpdateJob queued for sync when online');
         return {'result': true, 'error': null, 'queued': true};
       } else {
+        print("6666");
         throw Exception(result.errorMessage ?? 'Failed to update job');
       }
     } catch (e) {
@@ -454,10 +464,9 @@ class JobApi {
   }
 
   /// Upload Job Image
-  /// POST /app/ReceiveFile.ashx?id={jobNo}
+  /// POST https://vcore.x1.com.my/app/ReceiveFile.ashx?id={jobNo}
   ///
-  /// Supports offline queueing - when offline, queues the upload for later sync.
-  /// File uploads are queued with file path and metadata since FormData cannot be serialized.
+  /// Supports offline queueing - when offline, converts image to base64 and queues for sync.
   ///
   /// Request: FormData with 'files' field containing the image file
   /// Response: HTTP 200 on success
@@ -466,16 +475,18 @@ class JobApi {
     required String filePath,
     required String fileName,
   }) async {
-    // Use raw Dio for file uploads (ApiService not suitable for FormData)
+    // Use dedicated Dio instance with custom base URL for file uploads
     try {
-      final dio = _apiService.dio; // Get the Dio instance from ApiService
+      final dio = Dio();
+      dio.options.connectTimeout = const Duration(seconds: 30);
+      dio.options.receiveTimeout = const Duration(seconds: 30);
 
       final formData = FormData.fromMap({
         'files': await MultipartFile.fromFile(filePath, filename: fileName),
       });
 
       final response = await dio.post(
-        '/app/ReceiveFile.ashx',
+        'https://vcore.x1.com.my/app/ReceiveFile.ashx',
         data: formData,
         queryParameters: {'id': jobNo},
       );
@@ -502,28 +513,55 @@ class JobApi {
           '📋 No internet connection - queueing upload for later sync',
         );
 
-        // Queue the upload with file path and metadata
-        // This will be retried when connectivity is restored
-        await OfflineStorageService.queueOfflineRequest(
-          method: 'POST',
-          url: '/app/ReceiveFile.ashx?id=$jobNo',
-          data: {'filePath': filePath, 'fileName': fileName, 'jobNo': jobNo},
-          queryParameters: {'id': jobNo},
-          optimisticData: {
+        try {
+          // Read the file and convert to base64 for offline queuing
+          final file = File(filePath);
+          if (!await file.exists()) {
+            throw Exception('File not found: $filePath');
+          }
+
+          final imageBytes = await file.readAsBytes();
+          final base64Data = base64Encode(imageBytes);
+
+          debugPrint(
+            '📋 File converted to base64 (${imageBytes.length} bytes)',
+          );
+
+          // Queue the upload with base64 data (required format for offline queue manager)
+          await OfflineStorageService.queueOfflineRequest(
+            method: 'POST',
+            url: 'https://vcore.x1.com.my/app/ReceiveFile.ashx',
+            data: {
+              'base64Data': base64Data,
+              'filename': fileName,
+              'jobNo': jobNo,
+            },
+            queryParameters: {'id': jobNo},
+            optimisticData: {
+              'result': true,
+              'message': 'Upload queued - will sync when online',
+              'fileName': fileName,
+              'queued': true,
+            },
+            cacheKey: 'job_image_upload:$jobNo:$fileName',
+          );
+
+          debugPrint('✅ Image queued for sync: $fileName');
+
+          return {
             'result': true,
-            'message': 'Upload queued - will sync when online',
+            'message': 'Image upload queued - will sync when online',
             'fileName': fileName,
             'queued': true,
-          },
-          cacheKey: 'job_image_upload:$jobNo:$fileName',
-        );
-
-        return {
-          'result': true,
-          'message': 'Image upload queued - will sync when online',
-          'fileName': fileName,
-          'queued': true,
-        };
+          };
+        } catch (queueError) {
+          debugPrint('❌ Error queueing image for sync: $queueError');
+          return {
+            'result': false,
+            'message': 'Failed to queue image: $queueError',
+            'error': queueError.toString(),
+          };
+        }
       }
 
       return {

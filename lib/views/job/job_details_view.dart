@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/models/trailer_search_model.dart';
 import 'package:vcore_v5_app/models/uploaded_file_model.dart';
+import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
@@ -48,8 +49,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   bool _isSelectingTrailer = false;
   final FocusNode _trailerFocusNode = FocusNode();
   String _selectedTrailerId = ''; // Store selected trailer ID
-
-  // Uploaded images state
+  ConnectivityService _connectivityService = ConnectivityService();
   final JobApi _jobApi = JobApi();
   List<UploadedFile> _uploadedImages = [];
   bool _isLoadingImages = false;
@@ -85,7 +85,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     _sealNoController = TextEditingController(text: widget.job.sealNo);
     _trailerIdController = TextEditingController(text: widget.job.trailerNo);
     _remarksController = TextEditingController(text: widget.job.remarks);
-    _selectedTrailerId = ''; // Initialize trailer ID
+    _selectedTrailerId = widget.job.trailerId ?? ''; // Initialize trailer ID
     _headRun = widget.job.headRun ?? false;
     _trailerRun = widget.job.trailerRun ?? false;
 
@@ -535,7 +535,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
 
           // Use JobApi method which supports offline queuing
           final uploadResult = await _jobApi.uploadJobImage(
-            jobNo: _activeImageJob.no ?? '',
+            jobNo: _activeImageJob.id?.toString() ?? '',
             filePath: image.path,
             fileName: fileName,
           );
@@ -727,7 +727,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         dropQty: widget.job.dropQty ?? '0',
         tenantId: tenantId,
       );
-
+      print('✅ Job update result: ${jsonEncode(result)}');
       if (!mounted) return;
 
       // Close loading dialog
@@ -741,7 +741,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       widget.job.headRun = _headRun;
       widget.job.trailerRun = _trailerRun;
 
-      if (result['result'] == true || result['queued'] == true) {
+      if (result['Result'] == true || result['queued'] == true) {
         // // If B2B job exists, update it too
         // if (_hasB2B && widget.job.b2bData != null) {
         //   try {
@@ -775,9 +775,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
           } else {
             CustomSnackBar.showSuccess(
               context,
-              message: _hasB2B
-                  ? 'Both jobs updated successfully'
-                  : 'Job details saved successfully',
+              message: 'Job details saved successfully',
               duration: const Duration(seconds: 2),
             );
           }
@@ -1376,6 +1374,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                         isDark,
                         hasQrScanner: true,
                         isRequired: true,
+                        isEnabled: !_connectivityService.isOffline,
                         focusNode: _trailerFocusNode,
                       ),
                       // Direct dropdown below field
@@ -2086,6 +2085,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     bool hasQrScanner = false,
     bool isRequired = false,
     FocusNode? focusNode,
+    bool? isEnabled,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2119,6 +2119,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             fontSize: 11.sp,
             fontWeight: FontWeight.w600,
           ),
+          enabled: isEnabled ?? true,
           decoration: InputDecoration(
             hintText: 'Enter $label',
             hintStyle: GoogleFonts.inter(fontSize: 10.sp, color: Colors.grey),

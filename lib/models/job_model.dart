@@ -19,6 +19,7 @@ class Job {
   String? containerType;
   String? sealNo;
   String? trailerNo;
+  String? trailerId;
   String? remarks;
   int? mdtCode;
   String? mdtCodef;
@@ -63,6 +64,7 @@ class Job {
     this.containerType,
     this.sealNo,
     this.trailerNo,
+    this.trailerId,
     this.remarks,
     this.mdtCode,
     this.mdtCodef,
@@ -108,6 +110,7 @@ class Job {
     containerType: _replaceDash(json["ContainerType"]),
     sealNo: _replaceDash(json["SealNO"]),
     trailerNo: _replaceDash(json["TrailerNO"]),
+    trailerId: _replaceDash(json["TrailerId"]),
     remarks: _replaceDash(json["Remarks"]),
     mdtCode: (json["MDTCode"]),
     mdtCodef: _replaceDash(json["MDTCodef"]),
@@ -154,6 +157,7 @@ class Job {
     "ContainerType": containerType,
     "SealNO": sealNo,
     "TrailerNO": trailerNo,
+    "TrailerId": trailerId,
     "Remarks": remarks,
     "MDTCode": mdtCode,
     "MDTCodef": mdtCodef,

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcore_v5_app/models/job_model.dart';
 import 'package:vcore_v5_app/models/trailer_search_model.dart';
+import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
@@ -35,7 +36,7 @@ class _JobListViewState extends ConsumerState<JobListView>
   final TextEditingController _searchController = TextEditingController();
   final JobService _jobService = JobService();
   final ImagePicker _picker = ImagePicker();
-
+  final ConnectivityService _connectivityService = ConnectivityService();
   String _selectedJobType = 'HMS'; // HMS or TMS
   String _selectedStatus = 'pending'; // pending, in-progress, completed
   String _searchQuery = '';
@@ -2012,55 +2013,66 @@ class _JobListViewState extends ConsumerState<JobListView>
     });
 
     try {
-      final dio = DioRepo(baseUrl: 'https://vcore.x1.com.my').mDio;
+      final jobApi = JobApi();
       final jobNo = job.no?.trim() ?? '';
-      final jobId = job.id;
 
-      if (jobNo.isEmpty || jobId == null) {
-        throw Exception('Job number or ID is missing');
+      if (jobNo.isEmpty) {
+        throw Exception('Job number is missing');
       }
 
       int successCount = 0;
+      int queuedCount = 0;
+      final isOffline = _connectivityService.isOffline;
+
       for (var image in images) {
         try {
           final fileName =
               '$jobNo-${DateFormat("yyyyMMddHHmmss").format(DateTime.now())}';
 
-          final formData = FormData.fromMap({
-            'files': await MultipartFile.fromFile(
-              image.path,
-              filename: fileName,
-            ),
-          });
-
-          final response = await dio.post(
-            '/app/ReceiveFile.ashx',
-            data: formData,
-            queryParameters: {'id': jobId},
+          final result = await jobApi.uploadJobImage(
+            jobNo: job.id?.toString() ?? '',
+            filePath: image.path,
+            fileName: fileName,
           );
 
-          if (response.statusCode == 200 && response.data != null) {
-            successCount++;
+          if (result['result'] == true) {
+            if (result['queued'] == true) {
+              queuedCount++;
+              debugPrint('📋 Image queued for upload: $fileName');
+            } else {
+              successCount++;
+              debugPrint('✅ Image uploaded: $fileName');
+            }
+          } else {
+            debugPrint(
+              '❌ Failed to upload image ${image.path}: ${result['error']}',
+            );
           }
         } catch (e) {
-          debugPrint('❌ Failed to upload image ${image.path}: $e');
+          debugPrint('❌ Error uploading image ${image.path}: $e');
         }
       }
 
       if (!mounted) return;
 
+      // Build result message
+      final List<String> messages = [];
       if (successCount > 0) {
-        _safeShowSnackBar(
-          context,
-          '$successCount image(s) uploaded successfully',
-          Colors.green,
-        );
+        messages.add('$successCount image(s) uploaded');
+      }
+      if (queuedCount > 0) {
+        messages.add('$queuedCount image(s) queued (offline)');
       }
 
-      if (successCount < images.length) {
+      if (messages.isNotEmpty) {
+        _safeShowSnackBar(context, messages.join(', '), Colors.green);
+      }
+
+      final totalProcessed = successCount + queuedCount;
+      if (totalProcessed < images.length) {
         _safeShowSnackBar(
           context,
-          '${images.length - successCount} image(s) failed to upload',
+          '${images.length - totalProcessed} image(s) failed to upload',
           Colors.orange,
         );
       }
@@ -2342,6 +2354,7 @@ class _JobListViewState extends ConsumerState<JobListView>
     String? selectedTrailerId;
 
     // If job already has trailer, fetch its ID
+
     final existingTrailerNo = job.trailerNo?.trim() ?? '';
     if (existingTrailerNo.isNotEmpty) {
       try {
@@ -2367,6 +2380,11 @@ class _JobListViewState extends ConsumerState<JobListView>
       } catch (e) {
         debugPrint('⚠️ Could not fetch existing trailer ID: $e');
       }
+    }
+    if (selectedTrailerId == null && _connectivityService.isOffline) {
+      debugPrint('No existing trailer ID found for ${job.trailerNo}');
+      selectedTrailerId =
+          job.trailerId; // Use existing trailerID from job if offline
     }
 
     // Reset trailer search state
@@ -2562,6 +2580,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                               icon: Icons.local_shipping_rounded,
                               colorScheme: colorScheme,
                               hasSearch: true,
+                              isEnabled: !_connectivityService.isOffline,
                             ),
 
                             if (_editTrailerSearchResults.isNotEmpty ||
@@ -2870,6 +2889,7 @@ class _JobListViewState extends ConsumerState<JobListView>
     required ColorScheme colorScheme,
     int maxLines = 1,
     bool hasSearch = false,
+    bool? isEnabled,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2903,10 +2923,14 @@ class _JobListViewState extends ConsumerState<JobListView>
           child: TextField(
             controller: controller,
             maxLines: maxLines,
+            enabled: isEnabled,
             style: GoogleFonts.inter(
               fontSize: 13.sp,
               fontWeight: FontWeight.w500,
-              color: colorScheme.onSurface,
+              color:
+                  isEnabled == false && label.toLowerCase().contains('trailer')
+                  ? Colors.white24
+                  : colorScheme.onSurface,
             ),
             decoration: InputDecoration(
               hintText: hint,
@@ -2915,7 +2939,10 @@ class _JobListViewState extends ConsumerState<JobListView>
                 color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),
               filled: true,
-              fillColor: colorScheme.surfaceContainerHigh,
+              fillColor:
+                  isEnabled == false && label.toLowerCase().contains('trailer')
+                  ? Colors.black45
+                  : colorScheme.surfaceContainerHigh,
               suffixIcon: hasSearch
                   ? Icon(
                       Icons.search_rounded,
@@ -3320,7 +3347,6 @@ class _JobListViewState extends ConsumerState<JobListView>
         jobLastStatusDateTime: now,
         tenantId: tenantId,
       );
-
       if (!mounted) return false;
 
       // Close loading dialog immediately
@@ -3343,8 +3369,16 @@ class _JobListViewState extends ConsumerState<JobListView>
           );
         }
 
-        // Refresh job list after successful update or queuing
-        await _fetchJobs();
+        if (_connectivityService.isOffline) {
+          if (mounted) {
+            setState(() {
+              job.mdtCode = mdtCode;
+            });
+          }
+        } else {
+          await _fetchJobs();
+        }
+
         return true;
       } else {
         return false;

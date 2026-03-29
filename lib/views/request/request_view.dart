@@ -7,11 +7,11 @@ import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 import 'package:vcore_v5_app/widgets/custom_typeahead_field.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 import 'package:vcore_v5_app/services/vehicle_service.dart';
-import 'package:vcore_v5_app/services/api/vehicle_api.dart';
 import 'package:vcore_v5_app/services/api/jobs_api.dart';
 import 'package:vcore_v5_app/models/vehicle_model.dart';
 import 'package:vcore_v5_app/models/trailer_search_model.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
+import 'package:vcore_v5_app/providers/trailer_search_provider.dart';
 
 class RequestView extends ConsumerStatefulWidget {
   const RequestView({super.key});
@@ -38,12 +38,10 @@ class _RequestViewState extends ConsumerState<RequestView> {
   // Services
   final LoginCacheService _cacheService = LoginCacheService();
   final VehicleService _vehicleService = VehicleService();
-  final VehicleApi _vehicleApi = VehicleApi();
   final JobsApi _jobsApi = JobsApi();
 
   // Data lists
   List<Vehicle> _availableVehicles = [];
-  bool _isLoadingVehicles = false;
 
   @override
   void initState() {
@@ -53,7 +51,6 @@ class _RequestViewState extends ConsumerState<RequestView> {
   }
 
   Future<void> _loadVehicles() async {
-    setState(() => _isLoadingVehicles = true);
     try {
       // Use Riverpod provider to get driver ID (handles session properly)
       final driverId = ref.read(driverIdProvider);
@@ -67,13 +64,12 @@ class _RequestViewState extends ConsumerState<RequestView> {
         if (mounted) {
           setState(() {
             _availableVehicles = vehicles;
-            _isLoadingVehicles = false;
           });
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingVehicles = false);
+        debugPrint('Error loading vehicles: $e');
       }
     }
   }
@@ -104,8 +100,8 @@ class _RequestViewState extends ConsumerState<RequestView> {
         '🔍 Searching trailers: query=, size=$selectedSize, tenantId=$tenantId',
       );
 
-      final results = await _vehicleApi.searchTrailers(
-        trailerRegNo: query,
+      final results = await trailerSearchManager.searchTrailers(
+        query: query,
         trSize: selectedSize ?? '40',
         tenantId: tenantId,
       );

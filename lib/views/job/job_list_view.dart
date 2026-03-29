@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,11 +15,10 @@ import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
-import 'package:vcore_v5_app/services/api/vehicle_api.dart';
-import 'package:vcore_v5_app/services/dio/dio_repo.dart';
 import 'package:vcore_v5_app/services/job_service.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
+import 'package:vcore_v5_app/providers/trailer_search_provider.dart';
 
 class JobListView extends ConsumerStatefulWidget {
   const JobListView({super.key});
@@ -53,7 +51,6 @@ class _JobListViewState extends ConsumerState<JobListView>
   List<TrailerSearchResult> _editTrailerSearchResults = [];
   bool _isEditSearchingTrailers = false;
   bool _isEditSelectingTrailer = false;
-  final VehicleApi _vehicleApi = VehicleApi();
 
   @override
   void initState() {
@@ -2022,7 +2019,6 @@ class _JobListViewState extends ConsumerState<JobListView>
 
       int successCount = 0;
       int queuedCount = 0;
-      final isOffline = _connectivityService.isOffline;
 
       for (var image in images) {
         try {
@@ -2364,8 +2360,8 @@ class _JobListViewState extends ConsumerState<JobListView>
           final size = containerSize.replaceAll(RegExp(r'[^0-9]'), '');
           final sizeToUse = size.isEmpty ? '40' : size;
 
-          final results = await _vehicleApi.searchTrailers(
-            trailerRegNo: existingTrailerNo,
+          final results = await trailerSearchManager.searchTrailers(
+            query: existingTrailerNo,
             trSize: sizeToUse,
             tenantId: tenantId,
           );
@@ -2423,6 +2419,10 @@ class _JobListViewState extends ConsumerState<JobListView>
             });
 
             return Dialog(
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 24.h,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24.r),
               ),
@@ -2580,7 +2580,6 @@ class _JobListViewState extends ConsumerState<JobListView>
                               icon: Icons.local_shipping_rounded,
                               colorScheme: colorScheme,
                               hasSearch: true,
-                              isEnabled: !_connectivityService.isOffline,
                             ),
 
                             if (_editTrailerSearchResults.isNotEmpty ||
@@ -2702,7 +2701,7 @@ class _JobListViewState extends ConsumerState<JobListView>
                                                     SizedBox(width: 12.w),
                                                     Expanded(
                                                       child: Text(
-                                                        "${trailer.trailerID} - ${trailer.trailerRegNo}",
+                                                        "${trailer.trailerRegNoDisp}",
                                                         style:
                                                             GoogleFonts.inter(
                                                               fontSize: 13.sp,
@@ -2996,8 +2995,8 @@ class _JobListViewState extends ConsumerState<JobListView>
 
       debugPrint('🔍 Searching trailers: query=$query, size=$sizeToUse');
 
-      final results = await _vehicleApi.searchTrailers(
-        trailerRegNo: query,
+      final results = await trailerSearchManager.searchTrailers(
+        query: query,
         trSize: sizeToUse,
         tenantId: tenantId,
       );
@@ -3040,8 +3039,6 @@ class _JobListViewState extends ConsumerState<JobListView>
       }
 
       // Check if job has B2B linking
-      final hasB2B = _hasValidB2B(job);
-
       final response = await jobApi.updateJobDetails(
         jobNo: job.no ?? '',
         trailerID: trailerRegNo,

@@ -8,6 +8,7 @@ import '../services/offline/offline_storage_service.dart';
 import '../models/user_model.dart';
 import '../providers/user_provider.dart';
 import '../services/api/jobs_api.dart';
+import '../providers/trailer_search_provider.dart';
 
 part 'login_controller.g.dart';
 
@@ -118,10 +119,23 @@ class LoginController extends _$LoginController {
               mdtResponse.functions.map((f) => f.toJson()).toList(),
             );
             await _storage.saveMDTFunctions(mdtJson);
-            debugPrint('MDT Functions saved to local storage');
+            debugPrint('✅ MDT Functions saved to local storage');
           } catch (e) {
             // Log error but don't block login flow
-            debugPrint('Failed to fetch MDT Functions: $e');
+            debugPrint('❌ Failed to fetch MDT Functions: $e');
+          }
+
+          // Initialize trailer cache for offline usage
+          try {
+            debugPrint('📱 Initializing trailer cache on login...');
+            await trailerSearchManager.initializeCache(
+              tenantId: response.tenantId!,
+            );
+            final cacheSize = trailerSearchManager.getCacheSize();
+            debugPrint('✅ Trailer cache initialized with $cacheSize trailers');
+          } catch (e) {
+            // Log error but don't block login flow
+            debugPrint('⚠️ Warning: Failed to initialize trailer cache: $e');
           }
         }
 
@@ -158,6 +172,8 @@ class LoginController extends _$LoginController {
     await _loginCacheService.clearCache();
     // Clear all user data from local storage
     await _storage.clearAllUserData();
+    // Clear trailer search cache
+    await trailerSearchManager.clearCache();
     // Clear user from provider (only if ref is still mounted)
     if (ref.mounted) {
       ref.read(userDataProvider.notifier).state = null;

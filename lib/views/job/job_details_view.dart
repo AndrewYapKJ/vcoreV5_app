@@ -14,8 +14,8 @@ import 'package:vcore_v5_app/models/uploaded_file_model.dart';
 import 'package:vcore_v5_app/providers/connectivity_provider.dart';
 import 'package:vcore_v5_app/providers/jobs_provider.dart';
 import 'package:vcore_v5_app/providers/user_provider.dart';
+import 'package:vcore_v5_app/providers/trailer_search_provider.dart';
 import 'package:vcore_v5_app/services/api/job_api.dart';
-import 'package:vcore_v5_app/services/api/vehicle_api.dart';
 import 'package:vcore_v5_app/services/storage/login_cache_service.dart';
 import 'package:vcore_v5_app/widgets/custom_snack_bar.dart';
 
@@ -42,7 +42,6 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
   int _currentPage = 0;
 
   // Trailer search state
-  final VehicleApi _vehicleApi = VehicleApi();
   Timer? _trailerSearchDebounce;
   List<TrailerSearchResult> _trailerSearchResults = [];
   bool _isSearchingTrailers = false;
@@ -115,6 +114,31 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
     super.dispose();
   }
 
+  /// Update page details (seal, container, trailer) when page changes
+  /// This ensures form fields reflect the B2B data for the current page
+  Future<void> _updatePageDetails() async {
+    try {
+      final currentJob = _currentPage == 0 ? widget.job : widget.job.b2bData;
+      if (currentJob == null) return;
+
+      // Update text controllers with current page's data
+      setState(() {
+        _containerNoController.text = currentJob.containerNo ?? '';
+        _sealNoController.text = currentJob.sealNo ?? '';
+        _trailerIdController.text = currentJob.trailerNo ?? '';
+        _selectedTrailerId = currentJob.trailerId ?? '';
+        _headRun = currentJob.headRun ?? false;
+        _trailerRun = currentJob.trailerRun ?? false;
+      });
+
+      print(
+        '📄 Updated page details for page $_currentPage: container=${currentJob.containerNo}, seal=${currentJob.sealNo}, trailer=${currentJob.trailerNo}',
+      );
+    } catch (e) {
+      print('❌ Error updating page details: $e');
+    }
+  }
+
   /// Initialize trailer ID from current job trailer number
   /// Searches for the trailer and auto-sets _selectedTrailerId
   Future<void> _initializeTrailerInfo() async {
@@ -140,8 +164,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       );
 
       // Search for the trailer
-      final results = await _vehicleApi.searchTrailers(
-        trailerRegNo: trailerNo,
+      final results = await trailerSearchManager.searchTrailers(
+        query: trailerNo,
         trSize: sizeToUse,
         tenantId: (tenantId),
       );
@@ -456,7 +480,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
             ),
           ),
           content: Text(
-            'Upload ${images.length} image(s) for job ${widget.job.id}?',
+            'Upload ${images.length} image(s) for job ${widget.job.no}?',
             style: GoogleFonts.inter(fontSize: 14.sp),
           ),
           actions: [
@@ -714,17 +738,31 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       final tenantId = ref.read(tenantIdProvider) ?? '';
       final remarks = _remarksController.text.trim();
 
-      // Update main job
+      // Determine which job to update based on current page
+      final activeJob = _currentPage == 0 ? widget.job : widget.job.b2bData;
+      if (activeJob == null) {
+        throw Exception('Active job not found');
+      }
+
+      final jobNo = activeJob.no ?? '';
+      final pickQty = activeJob.pickQty ?? '0';
+      final dropQty = activeJob.dropQty ?? '0';
+
+      print(
+        '💾 Saving job details for page $_currentPage: jobNo=$jobNo (${_currentPage == 0 ? 'Main' : 'B2B'})',
+      );
+
+      // Update the appropriate job
       final result = await jobApi.updateJobDetails(
-        jobNo: widget.job.no ?? '',
-        trailerNo: _selectedTrailerId, // Use selected trailer ID for B2B too
+        jobNo: jobNo,
+        trailerNo: _selectedTrailerId,
         trailerID: trailerNo,
         containerNo: containerNo,
         sealNo: sealNo,
         remarks: remarks,
-        siteType: 'HMS', // Default to HMS
-        pickQty: widget.job.pickQty ?? '0',
-        dropQty: widget.job.dropQty ?? '0',
+        siteType: 'HMS',
+        pickQty: pickQty,
+        dropQty: dropQty,
         tenantId: tenantId,
       );
       print('✅ Job update result: ${jsonEncode(result)}');
@@ -733,36 +771,18 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
       // Close loading dialog
       Navigator.pop(context);
 
-      // Update local job object (for both online success and queued offline)
-      widget.job.containerNo = containerNo;
-      widget.job.sealNo = sealNo;
-      widget.job.trailerNo = trailerNo;
-      widget.job.remarks = remarks;
-      widget.job.headRun = _headRun;
-      widget.job.trailerRun = _trailerRun;
+      // Update the appropriate job object (for both online success and queued offline)
+      activeJob.containerNo = containerNo;
+      activeJob.sealNo = sealNo;
+      activeJob.trailerNo = trailerNo;
+      activeJob.remarks = remarks;
+      activeJob.headRun = _headRun;
+      activeJob.trailerRun = _trailerRun;
 
       if (result['Result'] == true || result['queued'] == true) {
-        // // If B2B job exists, update it too
-        // if (_hasB2B && widget.job.b2bData != null) {
-        //   try {
-        //     await jobApi.updateJobDetails(
-        //       jobNo: widget.job.b2bData!.no ?? '',
-        //       trailerNo:
-        //           _selectedTrailerId, // Use selected trailer ID for B2B too
-        //       trailerID: trailerNo,
-        //       containerNo: containerNo,
-        //       sealNo: sealNo,
-        //       remarks: remarks,
-        //       siteType: 'HMS',
-        //       pickQty: widget.job.b2bData!.pickQty ?? '0',
-        //       dropQty: widget.job.b2bData!.dropQty ?? '0',
-        //       tenantId: tenantId,
-        //     );
-        //     debugPrint('✅ B2B job details updated successfully');
-        //   } catch (e) {
-        //     debugPrint('⚠️ Error updating B2B job: $e');
-        //   }
-        // }
+        print(
+          '✅ Job updated successfully: ${_currentPage == 0 ? 'Main Job' : 'B2B Job'}',
+        );
 
         if (mounted) {
           // Show different message for queued vs saved
@@ -862,8 +882,8 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
         '🔍 Searching trailers: query=$query, size=$sizeToUse, tenantId=$tenantId',
       );
 
-      final results = await _vehicleApi.searchTrailers(
-        trailerRegNo: query,
+      final results = await trailerSearchManager.searchTrailers(
+        query: query,
         trSize: sizeToUse,
         tenantId: (tenantId),
       );
@@ -1027,6 +1047,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                   setState(() {
                     _currentPage = page;
                   });
+                  _updatePageDetails();
                   _fetchUploadedImages();
                 },
                 children: [
@@ -1374,7 +1395,7 @@ class _JobDetailsViewState extends ConsumerState<JobDetailsView> {
                         isDark,
                         hasQrScanner: true,
                         isRequired: true,
-                        isEnabled: !_connectivityService.isOffline,
+
                         focusNode: _trailerFocusNode,
                       ),
                       // Direct dropdown below field
